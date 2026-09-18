@@ -6,25 +6,7 @@ __pycache__/
 venv/
 env/
 .ipynb_checkpoints/
-
-# Data & model artifacts (kept out of git; regenerate via scripts)
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-
-models_saved/*
-!models_saved/.gitkeep
-
-results/*
-!results/.gitkeep
-
-# Pretrained/fine-tuned BERT checkpoints, Word2Vec binaries, etc.
-*.pt
-*.pth
-*.bin
-*.kv
-*.model
+.pytest_cache/
 
 # OS / editor
 .DS_Store
@@ -33,5 +15,25 @@ results/*
 
 # Logs
 *.log
+
+# Other Files
+.env
+CLAUDE.md
+
+# Other Folders
 Temp/
 Draft/
+tests/
+.agents/
+.claude/
+
+# Raw data (~1.9GB HF download cache + the pre-split dataset.csv) -- not
+# pushed; data/processed/{cv_pool,test}.csv (the actual splits used for
+# training/eval) are tracked instead, so this isn't needed to skip a rebuild.
+data/raw/*
+!data/raw/.gitkeep
+
+# Fine-tuned BERT checkpoint (~711MB, over GitHub's 100MB file limit without
+# Git LFS) -- not pushed; re-run `python -m src.training.train_bert` after a
+# fresh clone if you need it (the fastest of the 4 training commands).
+models_saved/bert_finetuned/

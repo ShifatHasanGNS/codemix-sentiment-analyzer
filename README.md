@@ -27,7 +27,7 @@ in yet. See `CLAUDE.md` for a task-by-task implementation guide.
 codemix-sentiment-analyzer/
 ├── data/                   # Raw and processed dataset (git-ignored except structure)
 │   ├── raw/                 # Original collected/written sentences
-│   └── processed/           # Cleaned, tokenized, split train/val/test files
+│   └── processed/           # cv_pool.csv (k-fold CV pool) + test.csv (held-out)
 ├── src/
 │   ├── config.py             # Central paths, constants, hyperparameters
 │   ├── data/                 # Dataset building, tokenizer, preprocessing
@@ -67,7 +67,7 @@ pure-Python and require no separate frontend code, so the switch costs nothing.
 python -m venv .venv && source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-python -m nltk.downloader punkt stopwords            # one-time NLTK data download
+python -m nltk.downloader punkt stopwords words      # one-time NLTK data download
 
 # 1. Build the dataset (once src/data/* is implemented)
 python scripts/build_dataset.py
