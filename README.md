@@ -51,7 +51,6 @@ codemix-sentiment-analyzer/
 ├── scripts/
 │   ├── build_dataset.py        # CLI entry point to assemble the dataset
 │   └── run_pipeline.py         # CLI entry point to train/evaluate everything
-├── notebooks/                 # Scratch/exploratory notebooks (git-ignored contents)
 ├── results/                   # Saved metrics tables, charts, error analysis reports
 ├── models_saved/              # Trained model checkpoints
 ├── docs/
