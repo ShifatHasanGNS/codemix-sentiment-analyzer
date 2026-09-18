@@ -33,3 +33,5 @@ results/*
 
 # Logs
 *.log
+Temp/
+Draft/
