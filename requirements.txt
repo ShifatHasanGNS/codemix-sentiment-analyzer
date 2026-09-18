@@ -1,0 +1,28 @@
+# Core
+torch>=2.1
+numpy
+pandas
+scikit-learn
+
+# NLP
+nltk
+gensim
+transformers
+
+# Dataset download (BanglishRev, from Hugging Face)
+datasets
+huggingface_hub
+
+# UI
+streamlit
+
+# Viz
+matplotlib
+seaborn
+
+# Misc
+tqdm
+pyyaml
+
+# Note: text-only project -- no image/vision libraries (Pillow, opencv-python, etc.)
+# should be needed here.

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Data & model artifacts (kept out of git; regenerate via scripts)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+models_saved/*
+!models_saved/.gitkeep
+
+results/*
+!results/.gitkeep
+
+# Pretrained/fine-tuned BERT checkpoints, Word2Vec binaries, etc.
+*.pt
+*.pth
+*.bin
+*.kv
+*.model
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
