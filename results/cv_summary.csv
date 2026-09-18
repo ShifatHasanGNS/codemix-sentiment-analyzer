@@ -1,0 +1,9 @@
+model,n_folds,mean_accuracy,std_accuracy
+tfidf,5,0.7025,0.0031
+lstm,5,0.6888,0.0038
+rnn,5,0.686,0.0032
+ann,5,0.6843,0.0026
+attention,5,0.6812,0.0033
+transformer,5,0.6797,0.003
+bow,5,0.6755,0.0007
+ngram,5,0.6724,0.0027

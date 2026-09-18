@@ -5,29 +5,44 @@ Each representation is paired (in src/training/train_classical.py) with a
 simple classifier (e.g. Naive Bayes / Logistic Regression from scikit-learn)
 to form the project's statistical baselines.
 
-TODO:
-- fit_ngram_vectorizer(corpus: list[str], n_range=(1, 2)) -> vectorizer
-- fit_bow_vectorizer(corpus: list[str]) -> vectorizer
-- fit_tfidf_vectorizer(corpus: list[str]) -> vectorizer
-    All three can likely reuse sklearn.feature_extraction.text.CountVectorizer /
-    TfidfVectorizer with a custom `tokenizer=` callable from
-    src.data.tokenizer.CodeMixTokenizer, keeping tokenization consistent
-    with the neural pipeline.
-- transform(vectorizer, corpus: list[str]) -> scipy.sparse matrix / ndarray
+All three vectorizers use src.data.tokenizer.CodeMixTokenizer for splitting
+text, so classical and neural pipelines tokenize identically.
 """
+
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
+from src import config
+from src.data.tokenizer import CodeMixTokenizer
+
+_tokenizer = CodeMixTokenizer()
 
 
 def fit_ngram_vectorizer(corpus: list, n_range=(1, 2)):
-    raise NotImplementedError
+    vectorizer = CountVectorizer(
+        tokenizer=_tokenizer.tokenize, token_pattern=None,
+        ngram_range=n_range, max_features=config.CLASSICAL_MAX_FEATURES,
+    )
+    vectorizer.fit(corpus)
+    return vectorizer
 
 
 def fit_bow_vectorizer(corpus: list):
-    raise NotImplementedError
+    vectorizer = CountVectorizer(
+        tokenizer=_tokenizer.tokenize, token_pattern=None,
+        ngram_range=(1, 1), max_features=config.CLASSICAL_MAX_FEATURES,
+    )
+    vectorizer.fit(corpus)
+    return vectorizer
 
 
 def fit_tfidf_vectorizer(corpus: list):
-    raise NotImplementedError
+    vectorizer = TfidfVectorizer(
+        tokenizer=_tokenizer.tokenize, token_pattern=None,
+        ngram_range=(1, 2), max_features=config.CLASSICAL_MAX_FEATURES,
+    )
+    vectorizer.fit(corpus)
+    return vectorizer
 
 
 def transform(vectorizer, corpus: list):
-    raise NotImplementedError
+    return vectorizer.transform(corpus)
