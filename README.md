@@ -5,6 +5,11 @@ TF-IDF, Word2Vec, ANN, RNN, LSTM, Attention, Transformer (from scratch, PyTorch)
 fine-tuned multilingual BERT — for sentiment classification of real e-commerce product
 reviews written in English, Bangla, Banglish, and Bangla–English code-switched text.
 
+Course project for **Natural Language Processing Laboratory (CSE 4122)**, Department of
+Computer Science and Engineering, Khulna University of Engineering and Technology.
+
+**Authors:** Md. Shifat Hasan (2107067), Siam Basher (2107078)
+
 **Data collection is 100% code-driven.** The corpus is downloaded and built entirely by
 code from [BanglishRev](https://huggingface.co/datasets/BanglishRev/bangla-english-and-code-mixed-ecommerce-review-dataset),
 a large, real, public dataset of Bangla/English/Banglish/code-mixed product reviews — no
@@ -49,7 +54,9 @@ codemix-sentiment-analyzer/
 ├── notebooks/                 # Scratch/exploratory notebooks (git-ignored contents)
 ├── results/                   # Saved metrics tables, charts, error analysis reports
 ├── models_saved/              # Trained model checkpoints
-├── docs/report/                # LaTeX source + compiled PDF academic report
+├── docs/
+│   ├── idea/                    # Original project proposal PDFs
+│   └── report/                  # LaTeX source + compiled PDF academic report
 ├── .streamlit/config.toml      # Light/dark/system theme
 ├── tests/                     # Lightweight smoke tests
 ├── requirements.txt
