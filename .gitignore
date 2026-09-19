@@ -37,3 +37,11 @@ data/raw/*
 # Git LFS) -- not pushed; re-run `python -m src.training.train_bert` after a
 # fresh clone if you need it (the fastest of the 4 training commands).
 models_saved/bert_finetuned/
+
+# LaTeX build artifacts -- the report is built from docs/report/latex/report.tex
+# but the compiled PDF is kept only at docs/report/report.pdf, not alongside
+# the source; aux/log/out are pdflatex byproducts, never tracked either.
+docs/report/latex/*.pdf
+docs/report/latex/*.aux
+docs/report/latex/*.out
+docs/report/latex/*.toc
