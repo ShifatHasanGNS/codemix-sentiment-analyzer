@@ -1,10 +1,4 @@
-"""
-ANN baseline: feed-forward network over a pooled representation of the input
-(e.g. averaged Word2Vec embeddings, or a Bag-of-Words/TF-IDF vector).
-
-Expected to underperform the sequence models since it has no notion of word
-order or long-range dependency -- serves as the project's neural lower bound.
-"""
+# Feed-forward baseline over a pooled input vector; no notion of word order.
 
 import torch.nn as nn
 

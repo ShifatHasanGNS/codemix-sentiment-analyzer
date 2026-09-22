@@ -1,20 +1,8 @@
 #!/usr/bin/env python
 """
-CLI entry point: runs the full pipeline end to end -- dataset check ->
-training (classical, neural, BERT, each via k-fold CV + a full-pool refit,
-except BERT which stays single-split) -> evaluation -- with flags to run a
-subset for faster local iteration.
-
 Usage:
     python scripts/run_pipeline.py [--models ngram,bow,tfidf,ann,rnn,lstm,attention,transformer,bert]
                                     [--skip-bert] [--skip-classical] [--epochs N]
-
-Training (--skip-bert aside) is long-running once real models are selected
-(see CLAUDE.md's "long-running commands" ground rule): implement/read this
-script, then have a human run it and report back, rather than running a
-full/partial pipeline inline in an AI session. `--help` is quick and fine to
-run directly to check flag parsing; so is re-running only the evaluation
-step against checkpoints that already exist in models_saved/.
 """
 
 import argparse
@@ -44,13 +32,9 @@ CLASSICAL_MODELS = ("ngram", "bow", "tfidf")
 NEURAL_MODELS = ("ann", "rnn", "lstm", "attention", "transformer")
 ALL_MODELS = CLASSICAL_MODELS + NEURAL_MODELS + ("bert",)
 
-# One prompt per language condition, for Phase 9's qualitative generation
-# samples folded into the error-analysis report.
+# one generation prompt per language condition, for the error-analysis report
 _GENERATION_PROMPTS = ["this product is", "ei jinis ta", "পণ্যটি", "product ta khub"]
 
-# Batch size for prediction passes over the (now ~15k-row) held-out test
-# set, so evaluation doesn't run the whole test set through a model (mBERT
-# especially) in a single unbatched forward pass.
 _PREDICT_BATCH_SIZE = 128
 
 
@@ -123,10 +107,7 @@ def _checkpoint_exists(model_name: str) -> bool:
 
 
 def run_evaluation(models_to_evaluate, cv_results_by_model: dict = None):
-    """Loads each selected model's checkpoint, predicts on the held-out test
-    set, and writes results/metrics_comparison.{csv,png} +
-    results/error_analysis.md (+ results/cv_summary.csv if `cv_results_by_model`
-    is given)."""
+    """Predicts on the held-out test set and writes results/* reports."""
     test_df = load_split("test")
     texts = test_df["text"].tolist()
 

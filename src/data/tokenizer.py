@@ -1,18 +1,4 @@
-"""
-Manually implemented tokenizer for mixed Bangla-English vocabulary.
-
-Must handle all 4 language conditions reasonably:
-    - English: standard word tokenization
-    - Bangla (Bangla script): script-aware tokenization (not whitespace-only,
-      since Bangla punctuation/word-boundary conventions differ from English)
-    - Banglish (Bangla written in Roman script): word tokenization, aware
-      that these tokens will NOT match an English dictionary
-    - Code-switched: a mix of the above within a single sentence
-
-Used by classical features (src/features/classical_features.py), Word2Vec
-training (src/features/embeddings.py), and every from-scratch neural model's
-input pipeline. NOT used by the BERT benchmark, which uses its own tokenizer.
-"""
+"""Script-aware tokenizer for mixed Bangla-English text. Used by classical features, Word2Vec, and from-scratch neural models (not BERT, which has its own)."""
 
 import re
 
@@ -21,23 +7,8 @@ from src.utils.io_utils import load_json, save_json
 PAD_TOKEN = "<pad>"
 UNK_TOKEN = "<unk>"
 
-# A run of Bangla-script letters, a run of other-script "word" letters
-# (with internal apostrophes for contractions like "don't"), a run of
-# digits, or any single other character (punctuation/emoji) -- each becomes
-# one token. This is script-aware rather than whitespace-only, so Bangla
-# text (which doesn't reliably space-separate the way English does) still
-# tokenizes into meaningful units instead of one giant blob.
-#
-# The "other word letters" branch uses \w's general Unicode letter
-# definition (via [^\W\d_...], not a plain [A-Za-z]) so stylized Unicode
-# letters survive tokenization too -- a real review in this corpus writes
-# "onak kharap" as "𝒐𝒏𝒂𝒌 𝒌𝒉𝒂𝒓𝒂𝒑" using Mathematical Bold Italic glyphs,
-# which are letters by Unicode's own classification. An ASCII-only pattern
-# would silently drop that review to zero tokens -- an all-padding input
-# that drives AdditiveAttention's softmax to 0/0 = NaN and permanently
-# corrupts the model's weights via backprop (see AdditiveAttention's
-# defensive masking, which handles any that still slip through at
-# inference time).
+# Script-aware (not whitespace-only) so Bangla text still tokenizes into units; \W-based
+# letter run (not plain [A-Za-z]) so stylized Unicode letters aren't dropped to zero tokens.
 _LETTER_RUN = r"[^\W\d_ঀ-৿\s]+(?:'[^\W\d_ঀ-৿\s]+)*"
 _TOKEN_RE = re.compile(
     r"[ঀ-৿]+"
@@ -69,8 +40,7 @@ class CodeMixTokenizer:
             for token in self.tokenize(text):
                 counts[token] = counts.get(token, 0) + 1
 
-        # Sort by (frequency desc, token asc) for a deterministic vocab
-        # ordering across runs given the same corpus.
+        # Deterministic order: frequency desc, token asc.
         kept = sorted(
             (token for token, count in counts.items() if count >= min_freq),
             key=lambda token: (-counts[token], token),

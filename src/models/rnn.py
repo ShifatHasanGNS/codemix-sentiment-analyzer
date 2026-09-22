@@ -1,7 +1,4 @@
-"""
-Basic RNN classifier: processes the token sequence step by step, maintaining
-a hidden state, and classifies from the final hidden state (or pooled states).
-"""
+# Vanilla RNN: classifies from the final hidden state.
 
 import torch
 import torch.nn as nn

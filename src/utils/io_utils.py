@@ -1,7 +1,4 @@
-"""
-Small I/O helpers shared across the project (load/save JSON, CSV, pickle,
-and torch checkpoints), so scripts don't repeat boilerplate.
-"""
+"""Small I/O helpers shared across the project (JSON, CSV, torch checkpoints)."""
 
 import json
 import os
@@ -11,7 +8,6 @@ import torch
 
 
 def ensure_dir(path):
-    """Create a directory (and parents) if it doesn't exist."""
     os.makedirs(path, exist_ok=True)
 
 
@@ -41,10 +37,5 @@ def save_checkpoint(state_dict, path):
 
 
 def load_checkpoint(path, map_location=None):
-    # weights_only=False: checkpoints in this project can hold arbitrary
-    # picklable objects (e.g. sklearn vectorizers/classifiers for the
-    # classical baselines), not just tensors, and PyTorch >=2.6 defaults to
-    # a tensor-only loader. Safe here because every checkpoint is a
-    # first-party artifact this project's own training scripts wrote to
-    # models_saved/, never a file from an untrusted/external source.
+    # weights_only=False: checkpoints may hold non-tensor objects (e.g. sklearn classifiers); always first-party.
     return torch.load(path, map_location=map_location, weights_only=False)

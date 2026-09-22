@@ -1,19 +1,4 @@
-"""
-Small bonus sequence-generation demo: autoregressive next-word / next-sentence
-completion built on top of a trained LSTM or Transformer checkpoint (reusing
-its encoder, with a language-modeling head instead of / alongside the
-classification head).
-
-The base checkpoint was trained for 3-class classification, not language
-modeling, so it has no next-token head of its own. TextCompletionModel reuses
-its embedding + encoder weights as a warm start and briefly trains a small
-linear LM head (config.TEXT_COMPLETION_LM_EPOCHS epochs) on the same train
-split via teacher forcing -- enough for qualitative "does this look
-plausible" demos, not a serious generative model.
-
-This is evaluated qualitatively only (see src/evaluation/error_analysis.py
-docstring) -- not scored numerically.
-"""
+"""Bonus autoregressive text-completion demo: reuses a trained LSTM/Transformer's embedding+encoder as a warm start and briefly trains a linear LM head via teacher forcing. Qualitative only, not scored."""
 
 import torch
 import torch.nn as nn
@@ -29,8 +14,7 @@ _SUPPORTED_BASE_MODELS = ("lstm", "transformer")
 
 
 class _NextTokenDataset(Dataset):
-    """(input_ids[:-1], input_ids[1:]) teacher-forcing pairs, using the same
-    tokenizer/vocab the base classifier was trained with."""
+    """(input_ids[:-1], input_ids[1:]) teacher-forcing pairs."""
 
     def __init__(self, texts, tokenizer, max_length):
         self.examples = [
@@ -80,7 +64,6 @@ class TextCompletionModel:
         self._train_lm_head(lm_epochs, learning_rate)
 
     def _encode_sequence(self, input_ids):
-        """Per-step hidden states, shape (batch, seq_len, hidden_dim)."""
         embedded = self.embedding(input_ids)
         if self.model_name == "lstm":
             outputs, _ = self.encoder(embedded)
@@ -102,7 +85,7 @@ class TextCompletionModel:
 
         params = list(self.embedding.parameters()) + list(self.encoder.parameters()) + list(self.lm_head.parameters())
         optimizer = torch.optim.Adam(params, lr=learning_rate)
-        criterion = nn.CrossEntropyLoss(ignore_index=0)  # ignore <pad> targets
+        criterion = nn.CrossEntropyLoss(ignore_index=0)
 
         for epoch in range(num_epochs):
             total_loss = 0.0

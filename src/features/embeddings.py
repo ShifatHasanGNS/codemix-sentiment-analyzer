@@ -1,8 +1,4 @@
-"""
-Word2Vec embeddings trained on the project's own corpus (via gensim),
-used as an alternative to randomly initialized embeddings inside the
-from-scratch neural models.
-"""
+# Word2Vec embeddings trained on the project's own corpus, via gensim.
 
 import numpy as np
 from gensim.models import Word2Vec
@@ -20,7 +16,7 @@ def train_word2vec(tokenized_corpus: list, vector_size: int = 100,
         min_count=min_count,
         sg=sg,
         seed=config.RANDOM_SEED,
-        workers=1,  # workers=1 keeps gensim's training deterministic given `seed`
+        workers=1,  # keeps training deterministic given `seed`
     )
 
 
@@ -33,15 +29,7 @@ def load_word2vec(path: str):
 
 
 def build_embedding_matrix(word2vec_model, vocab: dict, vector_size: int):
-    """Build a (vocab_size, vector_size) embedding matrix aligned to
-    `vocab` (a token -> id mapping, e.g. CodeMixTokenizer.token_to_id).
-
-    OOV strategy: the pad token gets an all-zero row (so it never
-    contributes gradient signal); every other token missing from the
-    Word2Vec vocabulary (including <unk>) gets a small seeded random
-    vector, rather than zeros, so the model can still tell OOV tokens
-    apart from padding and from each other.
-    """
+    # Pad token -> all-zero row; other OOV tokens -> small seeded random vector (not zero, so they stay distinguishable).
     rng = np.random.default_rng(config.RANDOM_SEED)
     matrix = np.zeros((len(vocab), vector_size), dtype=np.float32)
 
