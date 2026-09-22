@@ -1,13 +1,4 @@
-"""
-Model Architecture page: a layperson-friendly, somewhat-technical guide to
-how each of the 9 models actually works, grouped into the 3 families used
-throughout the project (classical / from-scratch neural / pretrained), plus
-a side-by-side comparison table.
-
-All hyperparameters/facts quoted here are read live from src.config or the
-saved tokenizer, not hardcoded copies -- if the config changes, this page
-stays accurate without a manual edit.
-"""
+"""Model Architecture page: how each of the 9 models works, plus a comparison table."""
 
 import sys
 from pathlib import Path
@@ -52,8 +43,6 @@ classical_tab, neural_tab, pretrained_tab = st.tabs(
     ["Classical", "Neural (from scratch)", "Pretrained"]
 )
 
-# --- Classical ------------------------------------------------------------
-
 with classical_tab:
     st.markdown(
         "These three don't understand grammar or meaning at all -- they turn each "
@@ -92,8 +81,6 @@ with classical_tab:
             text += f" This is the best performer of all 9 models here (**{performance['tfidf']:.0%} test accuracy**)."
         st.markdown(text)
         st.graphviz_chart(diagram_dot("tfidf", is_dark))
-
-# --- Neural (from scratch) -------------------------------------------------
 
 with neural_tab:
     st.markdown(
@@ -157,8 +144,6 @@ with neural_tab:
             "trained only on this project's data."
         )
         st.graphviz_chart(diagram_dot("transformer", is_dark))
-
-# --- Pretrained -------------------------------------------------------------
 
 with pretrained_tab:
     st.markdown(

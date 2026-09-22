@@ -1,13 +1,4 @@
-"""
-Pipeline/architecture diagrams for the Model Architecture page, rendered via
-st.graphviz_chart (accepts a raw DOT string client-side -- no `graphviz`
-pip package or system `dot` binary needed).
-
-Each diagram is checked, stage by stage, against the actual forward() pass
-it depicts (src/models/*.py, src/features/classical_features.py,
-src/models/bert_model.py) -- simplified to the real processing *stages*,
-not every tensor op, but nothing shown here is invented or out of order.
-"""
+"""Builds per-model pipeline diagrams as DOT strings for st.graphviz_chart."""
 
 import sys
 from pathlib import Path

@@ -1,11 +1,4 @@
-"""
-Entry point for the Code-Mix Sentiment Analyzer's Streamlit UI. Sets shared
-page config/theme, then hands off to whichever page is selected -- see
-app_pages/analyzer.py (predictions) and app_pages/architecture.py (a
-layperson's guide to how each model works).
-
-Run with: streamlit run app/streamlit_app.py
-"""
+"""Entry point: sets theme, then dispatches to the selected page."""
 
 import sys
 from pathlib import Path

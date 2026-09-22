@@ -1,13 +1,4 @@
-"""
-Classical statistical feature extraction: N-Gram counts, Bag-of-Words, TF-IDF.
-
-Each representation is paired (in src/training/train_classical.py) with a
-simple classifier (e.g. Naive Bayes / Logistic Regression from scikit-learn)
-to form the project's statistical baselines.
-
-All three vectorizers use src.data.tokenizer.CodeMixTokenizer for splitting
-text, so classical and neural pipelines tokenize identically.
-"""
+# N-Gram/BoW/TF-IDF vectorizers, all tokenized via CodeMixTokenizer to match the neural pipeline.
 
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 

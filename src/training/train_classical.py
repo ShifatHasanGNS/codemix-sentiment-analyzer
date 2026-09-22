@@ -1,18 +1,4 @@
-"""
-Trains the classical statistical baselines: N-Gram, Bag-of-Words, and TF-IDF
-features, each paired with a simple classifier (e.g. Naive Bayes / Logistic
-Regression from scikit-learn).
-
-Uses config.N_FOLDS-fold cross-validation (on data/processed/cv_pool.csv) to
-report mean +/- std validation accuracy per feature type, then refits each
-feature type's vectorizer + classifier once on the *full* CV pool to produce
-the single deployed checkpoint saved to models_saved/. That refit model is
-what src/evaluation and the Streamlit app load and evaluate against the
-held-out data/processed/test.csv.
-
-Usage:
-    python -m src.training.train_classical
-"""
+"""Trains classical N-Gram/BoW/TF-IDF + Logistic Regression baselines via k-fold CV, then refits on the full pool."""
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -39,19 +25,11 @@ def load_data():
 
 
 def _make_classifier():
-    # max_iter capped well below sklearn's usual 1000+ default: at
-    # ~100k rows x 20k features, an unbounded LogisticRegression fit can
-    # run long; 200 iterations is comfortably enough for lbfgs to converge
-    # on this bag-of-words-scale problem.
     return LogisticRegression(max_iter=200, random_state=config.RANDOM_SEED)
 
 
 def train_one_baseline(feature_name, train_texts, train_labels, val_texts, val_labels):
-    """Fit `feature_name`'s vectorizer and a Logistic Regression classifier
-    on top of it. Logistic Regression (rather than mixing in Naive Bayes)
-    is used for all three feature types so the comparison isolates the
-    effect of the feature representation, not the classifier.
-    """
+    """Same classifier for all feature types so the comparison isolates the feature representation."""
     vectorizer = _FIT_FUNCTIONS[feature_name](train_texts)
     train_features = transform(vectorizer, train_texts)
     val_features = transform(vectorizer, val_texts)
@@ -64,8 +42,7 @@ def train_one_baseline(feature_name, train_texts, train_labels, val_texts, val_l
 
 
 def run_cross_validation(feature_name: str, cv_pool):
-    """config.N_FOLDS-fold CV for one feature type; returns per-fold
-    accuracies plus their mean/std."""
+    """k-fold CV for one feature type; returns per-fold accuracies plus mean/std."""
     fold_accuracies = []
     for fold_index in range(config.N_FOLDS):
         train_df, val_df = get_fold(cv_pool, fold_index)
@@ -85,7 +62,7 @@ def run_cross_validation(feature_name: str, cv_pool):
 
 
 def fit_final_classical(feature_name: str, texts: list, labels: list):
-    """Fit on the *full* CV pool (no held-out val) for the deployed model."""
+    """Fit on the full CV pool (no held-out val) for the deployed model."""
     vectorizer = _FIT_FUNCTIONS[feature_name](texts)
     classifier = _make_classifier()
     classifier.fit(transform(vectorizer, texts), labels)
