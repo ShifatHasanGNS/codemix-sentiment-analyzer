@@ -54,10 +54,12 @@ At the current target size, this must also flatten/tag the full ~1.74M raw revie
 small sample), so expect a few minutes even with the raw file cached locally.
 
 ## `raw/`
+
 `dataset.csv` — the full assembled (labeled, language-tagged, filtered,
 cleaned, subsampled) corpus before splitting.
 
 ## `processed/`
+
 - `cv_pool.csv` — 90% of the corpus, used for k-fold cross-validation. Has
   every column in the schema below plus a `fold` int column (0..N_FOLDS-1,
   see `src.config.N_FOLDS`); `src.data.dataset_builder.get_fold()` splits
@@ -69,14 +71,14 @@ Both are produced by `src.data.dataset_builder.create_cv_splits()`.
 
 ## Schema
 
-| column             | type | description                                                                 |
-|--------------------|------|-------------------------------------------------------------------------------|
-| `id`               | str  | unique row id                                                                 |
-| `product_category` | str  | product category from BanglishRev metadata                                   |
-| `rating`           | int  | original 1-5 star rating from the review                                     |
-| `label`            | str  | derived sentiment: one of `positive`, `negative`, `neutral`                  |
-| `language`         | str  | auto-detected: one of `english`, `bangla`, `banglish`, `code_switched`       |
-| `text`             | str  | the review content                                                            |
+| column             | type | description                                                            |
+| ------------------ | ---- | ---------------------------------------------------------------------- |
+| `id`               | str  | unique row id                                                          |
+| `product_category` | str  | product category from BanglishRev metadata                             |
+| `rating`           | int  | original 1-5 star rating from the review                               |
+| `label`            | str  | derived sentiment: one of `positive`, `negative`, `neutral`            |
+| `language`         | str  | auto-detected: one of `english`, `bangla`, `banglish`, `code_switched` |
+| `text`             | str  | the review content                                                     |
 
 `cv_pool.csv` additionally has a `fold` int column (dropped by `get_fold()`
 before returning a fold's train/val DataFrames).

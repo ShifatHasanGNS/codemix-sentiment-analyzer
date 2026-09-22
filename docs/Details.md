@@ -30,11 +30,11 @@ The project compares nine sentiment-classification techniques on a 150,000-revie
 of real Bangla / English / Banglish / code-switched e-commerce product reviews
 (sourced from [BanglishRev](https://huggingface.co/datasets/BanglishRev/bangla-english-and-code-mixed-ecommerce-review-dataset)):
 
-| Family | Models |
-|---|---|
-| Classical (Logistic Regression + hand-built features) | N-Gram, Bag-of-Words, TF-IDF |
-| Neural, from scratch (PyTorch) | ANN, RNN, LSTM, Attention, Transformer |
-| Pretrained | Fine-tuned `bert-base-multilingual-cased` (mBERT) |
+| Family                                                | Models                                            |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| Classical (Logistic Regression + hand-built features) | N-Gram, Bag-of-Words, TF-IDF                      |
+| Neural, from scratch (PyTorch)                        | ANN, RNN, LSTM, Attention, Transformer            |
+| Pretrained                                            | Fine-tuned `bert-base-multilingual-cased` (mBERT) |
 
 Every model is evaluated on the same held-out test set, broken down by language
 condition, to answer the project's central question: **which technique is most robust to
@@ -163,6 +163,7 @@ here instead of hardcoding them, so changing one value updates the whole pipelin
 ## 4. `src/data/`
 
 ### `dataset_builder.py`
+
 Assembles the corpus entirely by code from BanglishRev, text-only by construction. The
 source repo stores review text and images as separate files (`reviews v1.json` ~1.9GB
 plus 109 "Review Images N.zip" archives); `download_banglishrev(cache_dir=None)` fetches
@@ -201,10 +202,10 @@ only the exact JSON filename via `hf_hub_download`, so image archives are never 
   drives `AdditiveAttention`'s softmax to `0/0 = NaN`, permanently corrupting model
   weights via backprop. Also drops exact-text duplicates.
 - `subsample_balanced(df, target_size, per_group_cap=None)` — a two-level, label-first
-  design: `target_size` splits evenly across the 3 labels, and only *within* each label
+  design: `target_size` splits evenly across the 3 labels, and only _within_ each label
   does a best-effort-then-redistribute pass run across its 4 language groups (so
   code-switched contributes everything it has, and any shortfall is filled from other
-  language conditions *of that same label*). This matters at scale because the raw
+  language conditions _of that same label_). This matters at scale because the raw
   label distribution is heavily skewed (~82% positive) — a single flat redistribution
   across all 12 (label, language) cells would let positive's leftover pool dominate and
   silently break label balance (verified empirically before choosing this design).
@@ -226,6 +227,7 @@ Depends on `src.config`, `src.utils.io_utils`. Used by `scripts/build_dataset.py
 (`get_fold`) by both training loops.
 
 ### `preprocess.py`
+
 Shared text-cleaning utilities used before tokenization/feature extraction.
 
 - `_BANGLA_STOPWORDS` / `_BANGLISH_STOPWORDS` — small hand-curated frozensets of common
@@ -247,6 +249,7 @@ Depends on `src.config`, `src.utils.io_utils.load_csv`. Used throughout training
 evaluation, and `scripts/run_pipeline.py`.
 
 ### `tokenizer.py`
+
 `CodeMixTokenizer` — a manually implemented, script-aware tokenizer for mixed
 Bangla-English vocabulary, handling all 4 language conditions. Used by classical
 features, Word2Vec training, and every from-scratch neural model's input pipeline —
@@ -283,6 +286,7 @@ Depended on by `src/features/classical_features.py`, `src/features/embeddings.py
 ## 5. `src/features/`
 
 ### `classical_features.py`
+
 Builds N-Gram / Bag-of-Words / TF-IDF vectorizers, all using
 `CodeMixTokenizer.tokenize` as the `tokenizer=` callable (with `token_pattern=None` to
 disable sklearn's default regex tokenizer), so classical and neural pipelines tokenize
@@ -300,6 +304,7 @@ Each vectorizer is paired with a `LogisticRegression` classifier in
 and `app/app_lib.py`.
 
 ### `embeddings.py`
+
 Word2Vec embeddings trained on the project's own corpus via `gensim`, used as the input
 representation for the ANN/RNN/LSTM/Attention/Transformer models (in place of a
 randomly-initialized embedding table).
@@ -331,6 +336,7 @@ All five from-scratch models are instantiated by `src/training/train_neural.py`'
 `build_model()` factory, wired with the hyperparameters in `src/config.py`.
 
 ### `ann.py` — `ANNClassifier`
+
 Feed-forward baseline over a **pooled** input vector (mean-pooled Word2Vec embeddings,
 computed by `train_neural._pool_embeddings`, since ANN has no learned embedding layer
 or sequence encoder). `__init__(input_dim, hidden_dims, num_classes=3, dropout=0.3)`
@@ -339,6 +345,7 @@ ending in `Linear(prev_dim, num_classes)`. `forward(x)` → logits `(batch, num_
 No word-order or sequence modeling — intentionally the project's neural lower bound.
 
 ### `rnn.py` — `RNNClassifier`
+
 `__init__(vocab_size, embedding_dim, hidden_dim, num_classes=3, pretrained_embeddings=None, freeze_embeddings=False)`.
 Embedding layer either loaded from `pretrained_embeddings` (the Word2Vec matrix, via
 `nn.Embedding.from_pretrained`) or randomly initialized (`padding_idx=0` either way).
@@ -349,6 +356,7 @@ state) through `Linear(hidden_dim, num_classes)`. Vanilla RNN baseline — no ga
 no long-range memory. Uses `HIDDEN_DIM=64`, `EMBEDDING_DIM=100`.
 
 ### `lstm.py` — `LSTMClassifier`
+
 `__init__(vocab_size, embedding_dim, hidden_dim, num_classes=3, num_layers=1, bidirectional=False, pretrained_embeddings=None, freeze_embeddings=False)`.
 Same embedding setup as RNN. `nn.LSTM(..., num_layers=num_layers, bidirectional=bidirectional, batch_first=True)`;
 classifier input dim is `hidden_dim * num_directions`. Project config uses
@@ -362,6 +370,7 @@ reused by `src/generation/text_completion.py`'s LM head and composed inside
 `attention.py`.
 
 ### `attention.py` — `AdditiveAttention`, `AttentionClassifier`
+
 Manually implemented Bahdanau-style additive attention
 (`score(h) = v^T tanh(W h)`) layered on top of an LSTM encoder, so the model can weight
 relevant tokens instead of relying only on the final hidden state.
@@ -369,7 +378,7 @@ relevant tokens instead of relying only on the final hidden state.
 - `AdditiveAttention(hidden_dim)`: `W = Linear(hidden_dim, hidden_dim)`,
   `v = Linear(hidden_dim, 1, bias=False)`. `forward(encoder_outputs, mask)` computes
   per-position scores, masking invalid (pad) positions to `-inf` before softmax —
-  **except** when a row is *fully* masked (e.g. text that tokenized to nothing): that
+  **except** when a row is _fully_ masked (e.g. text that tokenized to nothing): that
   row is left fully unmasked instead, because masking every position to `-inf` produces
   an all-`-inf` softmax input → NaN weights → NaN gradients that permanently corrupt
   the model on the next backward pass. Such empty rows are filtered out of training
@@ -384,6 +393,7 @@ relevant tokens instead of relying only on the final hidden state.
   the model focused on.
 
 ### `transformer.py` — `PositionalEncoding`, `TransformerEncoderClassifier`
+
 From-scratch Transformer encoder using PyTorch's own `nn.TransformerEncoderLayer` /
 `nn.TransformerEncoder` blocks (still counts as "from scratch" per this project's
 convention: random init, no pretrained weights — the same level as RNN/LSTM using
@@ -403,6 +413,7 @@ convention: random init, no pretrained weights — the same level as RNN/LSTM us
   for `src/generation/text_completion.py`'s LM head.
 
 ### `bert_model.py`
+
 Thin wrapper around HuggingFace `AutoModelForSequenceClassification` /
 `AutoTokenizer` for `bert-base-multilingual-cased` (`BERT_MODEL_NAME`).
 
@@ -422,6 +433,7 @@ inference.
 ## 7. `src/training/`
 
 ### `train_bert.py`
+
 Fine-tunes pretrained mBERT as the strongest benchmark model.
 
 - `build_dataloaders(train_df, val_df, tokenizer, batch_size)` → two `DataLoader`s;
@@ -449,6 +461,7 @@ single held-out fine-tune. It is still evaluated against the same held-out
 the validation methodology differed.
 
 ### `train_classical.py`
+
 Trains the three classical baselines — N-Gram, Bag-of-Words, TF-IDF — each paired with
 the same `LogisticRegression` classifier.
 
@@ -462,18 +475,19 @@ the same `LogisticRegression` classifier.
 - `train_one_baseline(feature_name, train_texts, train_labels, val_texts, val_labels)` →
   `(vectorizer, classifier, val_accuracy)`.
 - `run_cross_validation(feature_name, cv_pool)` → dict `{model_name, fold_accuracies,
-  mean_accuracy, std_accuracy}`, looping `config.N_FOLDS` (5) folds via `get_fold`.
+mean_accuracy, std_accuracy}`, looping `config.N_FOLDS` (5) folds via `get_fold`.
 - `fit_final_classical(feature_name, texts, labels)` → `(vectorizer, classifier)` fit on
-  the *entire* CV pool (no held-out split) — this becomes the deployed checkpoint.
+  the _entire_ CV pool (no held-out split) — this becomes the deployed checkpoint.
 - `main()` — runs CV then full-pool refit for all 3 feature types, saves each as
   `models_saved/classical_{name}.pt`.
 
 Design rationale: Logistic Regression (rather than mixing in Naive Bayes per feature
 type) is used uniformly across all three feature types so the model comparison isolates
-the effect of the *feature representation* (n-gram vs BoW vs TF-IDF), not a difference
+the effect of the _feature representation_ (n-gram vs BoW vs TF-IDF), not a difference
 in classifier.
 
 ### `train_neural.py`
+
 Shared, model-agnostic training loop for all five from-scratch PyTorch architectures
 (ANN, RNN, LSTM, Attention, Transformer), parameterized by a `model_name` string. The
 largest module in the project (308 lines pre-edit).
@@ -490,7 +504,7 @@ largest module in the project (308 lines pre-edit).
 - `build_dataloaders(train_df, val_df, tokenizer, batch_size)` →
   `(train_loader, val_loader_or_None)`.
 - `_build_assets(train_df, val_df, cache_key)` → dict `{tokenizer, embedding_matrix,
-  train_loader, val_loader, vocab_size, class_weights}`. Builds `CodeMixTokenizer` vocab
+train_loader, val_loader, vocab_size, class_weights}`. Builds `CodeMixTokenizer` vocab
   and trains Word2Vec **from `train_df` only, never `val_df`** — the textbook-correct
   k-fold approach that avoids leaking validation-fold vocabulary into feature
   extraction. Also computes inverse-frequency class weights
@@ -520,9 +534,10 @@ largest module in the project (308 lines pre-edit).
   model.
 
 ### Cross-validation and refit strategy (shared by classical + neural)
+
 For each classical/neural model: run `N_FOLDS=5` k-fold cross-validation on the CV pool
 to get a mean/std accuracy estimate (written to `results/cv_summary.csv`), then
-**separately** refit on the *entire* CV pool (no held-out split) to produce the actual
+**separately** refit on the _entire_ CV pool (no held-out split) to produce the actual
 deployed checkpoint in `models_saved/`. The CV numbers estimate generalization; the
 refit model is what's evaluated on the untouched `test.csv` and served in the Streamlit
 app.
@@ -532,6 +547,7 @@ app.
 ## 8. `src/evaluation/`
 
 ### `metrics.py`
+
 Computes and persists quantitative classification metrics for every trained model, both
 overall and broken down by language condition — this breakdown is what lets the project
 answer its central question ("which technique is most robust to code-switched input?")
@@ -546,7 +562,7 @@ directly from the output tables/chart.
   DataFrame, saves to `results/metrics_comparison.csv`.
 - `summarize_cv_results(fold_results)` → `{model, n_folds, mean_accuracy, std_accuracy}`
   sorted by mean accuracy descending, saved to `results/cv_summary.csv`. This reports
-  the *validation* methodology (k-fold CV on the training pool) — a separate,
+  the _validation_ methodology (k-fold CV on the training pool) — a separate,
   complementary artifact to `metrics_comparison.csv`, which reports the final refit
   models' performance on the untouched held-out test set.
 - `plot_comparison_chart(comparison_table)` → grouped bar chart (Matplotlib), one group
@@ -556,6 +572,7 @@ directly from the output tables/chart.
   code_switched=yellow `#eda100`).
 
 ### `error_analysis.py`
+
 Produces the qualitative half of evaluation — representative misclassified examples per
 model with a heuristic likely-cause note, plus qualitative text-generation samples —
 written to `results/error_analysis.md`.
@@ -585,6 +602,7 @@ written to `results/error_analysis.md`.
 ## 9. `src/generation/`
 
 ### `text_completion.py`
+
 A small bonus (non-scored) autoregressive text-generation demo built on top of an
 already-trained LSTM or Transformer sentiment-classification checkpoint, reusing its
 embedding + encoder as a warm start for a lightweight next-token language model.
@@ -612,7 +630,7 @@ embedding + encoder as a warm start for a lightweight next-token language model.
   `_encode_sequence` + LM head; stops early on `<pad>`.
 
 The base checkpoint was trained purely for 3-class sentiment classification and has no
-next-token head of its own — this class exists solely to *retrofit* one via a
+next-token head of its own — this class exists solely to _retrofit_ one via a
 warm-started, briefly-trained linear head, good enough for qualitative "does this look
 plausible" demos. Its output feeds into `error_analysis.py`'s report, never scored
 numerically.
@@ -622,12 +640,14 @@ numerically.
 ## 10. `src/utils/`
 
 ### `seed.py`
+
 `set_seed(seed=config.RANDOM_SEED)` — seeds Python's `random`, `numpy`, and `torch`
 (CPU and, if available, all CUDA devices), and forces
 `torch.backends.cudnn.deterministic=True` / `benchmark=False` for reproducible runs.
 Called first by every training script (classical, neural, BERT).
 
 ### `io_utils.py`
+
 Small I/O helpers shared across the project so scripts don't repeat boilerplate.
 
 - `ensure_dir(path)` — wraps `os.makedirs(exist_ok=True)`.
@@ -646,6 +666,7 @@ Small I/O helpers shared across the project so scripts don't repeat boilerplate.
 ## 11. `app/` (Streamlit UI)
 
 ### `streamlit_app.py`
+
 Entry point (`streamlit run app/streamlit_app.py`). Inserts both the project root and
 `app/` onto `sys.path` (so `app_lib` and `src.*` are both importable regardless of
 Streamlit's working directory), calls `st.set_page_config(...)`, injects custom CSS via
@@ -656,6 +677,7 @@ Kept as a thin entry point specifically so the page modules hold all page-specif
 logic.
 
 ### `app_lib.py`
+
 Shared constants, cached model loaders, and inference/styling helpers used by both
 pages — deliberately kept out of `streamlit_app.py` so importing this module doesn't
 also trigger `st.navigation()`.
@@ -667,6 +689,7 @@ stays in sync with the actual rendered row height); `MODEL_DISPLAY` (internal ke
 (label → `(badge color, Material icon)`, green=positive / red=negative / gray=neutral).
 
 Key functions:
+
 - `display_name(model_name)` / `short_name(model_name)` — full "Category – Name" string
   vs. bare model name (used in tight spaces, e.g. the confidence chart's label gutter,
   where the full name would be truncated).
@@ -692,6 +715,7 @@ Key functions:
   softmax) prediction paths depending on which bucket `model_name` falls into.
 
 ### `diagrams.py`
+
 Generates a Graphviz DOT string per model, rendered client-side via
 `st.graphviz_chart` (no `graphviz` pip package or system `dot` binary required, since
 Streamlit renders DOT text directly). Each diagram was manually checked stage-by-stage
@@ -713,6 +737,7 @@ not every tensor op, but nothing shown is invented or out of order.
   `_BUILDERS` map.
 
 ### `app_pages/analyzer.py`
+
 The default/main page. Lets the user type or pick a sample review, choose which
 available trained models to run, and view predictions side by side with an overall
 consensus and a confidence bar chart.
@@ -738,6 +763,7 @@ non-empty text and ≥1 selected model, runs `predict_with_model` per selected m
 renders verdict, cards, and chart.
 
 ### `app_pages/architecture.py`
+
 An educational "How do these models work?" page — explains all 9 models grouped into 3
 families (Classical, Neural-from-scratch, Pretrained), each paired with its
 `diagrams.py` diagram, plus a side-by-side comparison table. All hyperparameters/facts
@@ -760,6 +786,7 @@ than hardcoded copies, so the page stays accurate automatically if the config ch
 ## 12. `scripts/`
 
 ### `build_dataset.py`
+
 CLI entry point that downloads BanglishRev, builds, and splits the dataset.
 
 ```bash
@@ -780,10 +807,11 @@ per split, per-fold sizes).
 
 The first run needs internet access to fetch BanglishRev's raw review JSON (~1.9GB)
 from Hugging Face; later runs reuse the local `huggingface_hub` cache. At
-`TARGET_DATASET_SIZE=150,000` this must flatten/tag the *entire* ~1.74M-row raw corpus
+`TARGET_DATASET_SIZE=150,000` this must flatten/tag the _entire_ ~1.74M-row raw corpus
 rather than a small sample, so expect a few minutes even with the raw file cached.
 
 ### `run_pipeline.py`
+
 CLI entry point that runs the full pipeline end to end: verify processed data exists →
 train selected classical/neural models via 5-fold CV plus a full-pool refit (BERT
 instead trains on a single held-out split, no CV) → evaluate every trained/available
@@ -802,6 +830,7 @@ python scripts/run_pipeline.py [--models ngram,bow,tfidf,ann,rnn,lstm,attention,
   (BERT) if given.
 
 Key functions:
+
 - `_require_processed_data()` — raises `FileNotFoundError` if `cv_pool.csv`/`test.csv`
   are missing, hinting to run `build_dataset.py` first.
 - `_predict_classical` / `_predict_neural` / `_predict_bert` — per-family prediction
@@ -843,6 +872,7 @@ BERT checkpoint is excluded from version control (over GitHub's file-size limit)
 rest are committed so the Streamlit app runs immediately after cloning.
 
 `results/` holds the pipeline's evaluation artifacts:
+
 - `metrics_comparison.csv` / `.png` — every model's accuracy/precision/recall/F1,
   overall and per language condition, as a table and a grouped bar chart.
 - `cv_summary.csv` — each model's k-fold CV mean/std accuracy (classical + neural only;
