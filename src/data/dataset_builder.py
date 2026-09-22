@@ -1,41 +1,9 @@
-"""
-Assembles the Code-Mix Sentiment corpus -- entirely via code, no manual
-writing or translation.
+"""Assembles the Code-Mix Sentiment corpus from BanglishRev, entirely via code.
 
-Source: BanglishRev (Hugging Face dataset id in src.config.HF_DATASET_ID),
-a large-scale, real, publicly available dataset of Bangla / English /
-Banglish / code-mixed e-commerce product reviews (~1.74M reviews across
-~128k products), released under CC-BY-NC-SA-4.0
-(https://huggingface.co/datasets/BanglishRev/bangla-english-and-code-mixed-ecommerce-review-dataset).
-Product reviews are a universally familiar topic, which satisfies the
-"corpus must be familiar to everyone" course requirement without needing any
-hand-written or translated sentences.
-
-Text only: the raw BanglishRev repo stores review text and review images as
-completely separate files -- a single `reviews v1.json` (~1.9GB) plus 109
-"Review Images N.zip" archives. download_banglishrev() fetches only
-`reviews v1.json` by exact filename, so the image archives are never
-downloaded, touched, or referenced anywhere in this project.
-
-Pipeline (all automated):
-    1. download_banglishrev()      -- fetch the raw dataset via code
-    2. flatten_reviews()           -- raw nested JSON -> one row per review
-    3. map_rating_to_label()       -- star rating -> positive/neutral/negative
-    4. detect_language_condition() -- heuristic tagging into one of
-                                       english / bangla / banglish / code_switched
-    5. filter_familiar_categories()-- no-op by default (see its docstring);
-                                       kept for traceability/override
-    6. clean_and_dedupe()          -- drop empty/too-short/duplicate reviews
-    7. subsample_balanced()        -- cap total size and balance by label
-                                       (language left at its natural
-                                       distribution -- see src.config)
-    8. assemble_dataset()          -- orchestrates 1-7, writes data/raw/dataset.csv
-    9. create_cv_splits()          -- stratified held-out test split, then a
-                                       `fold` column (0..N_FOLDS-1) on the
-                                       rest, writes data/processed/
-
-Expected output schema (see data/README.md for full details), one row per
-example: id, product_category, rating, label, language, text
+Pipeline: download_banglishrev -> flatten_reviews -> map_rating_to_label ->
+detect_language_condition -> filter_familiar_categories -> clean_and_dedupe ->
+subsample_balanced -> assemble_dataset (orchestrates, writes data/raw/dataset.csv)
+-> create_cv_splits (writes data/processed/). See data/README.md for schema.
 """
 
 import json
@@ -46,9 +14,6 @@ import pandas as pd
 from src import config
 from src.utils.io_utils import ensure_dir, save_csv
 
-# A raw JSON record's "Reviews" entries carry engagement/moderation fields
-# (Buyer ID, Likes, Dislikes, Reply, Images, ...) that this text-only
-# project has no use for. Only these are ever read out of a review dict.
 _REVIEW_RATING_FIELD = "Current Rating"
 _REVIEW_TEXT_FIELD = "Review Content"
 _PRODUCT_CATEGORY_FIELDS = ("Category", "Parent Category", "Root Category")
@@ -56,8 +21,7 @@ _PRODUCT_CATEGORY_FIELDS = ("Category", "Parent Category", "Root Category")
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _ENGLISH_WORDS = None  # lazily-built cache; see _english_word_set()
 
-# Common short (<3-char) English function words worth keeping even though
-# most other 1-2 letter entries in NLTK's raw word list are dropped below.
+# Short English function words kept despite the length>=3 filter below.
 _SHORT_ENGLISH_WORDS = frozenset([
     "a", "i", "am", "an", "as", "at", "be", "by", "do", "go", "he", "hi",
     "if", "in", "is", "it", "me", "my", "no", "of", "ok", "on", "or", "so",
@@ -66,13 +30,7 @@ _SHORT_ENGLISH_WORDS = frozenset([
 
 
 def download_banglishrev(cache_dir: str = None) -> str:
-    """Fetch BanglishRev's review JSON and return its local file path.
-
-    Downloads only the `reviews v1.json` file (~1.9GB) by exact filename via
-    huggingface_hub, never the dataset repo's 109 "Review Images N.zip"
-    archives -- this keeps the fetch text-only by construction rather than
-    by filtering after the fact.
-    """
+    """Fetch BanglishRev's `reviews v1.json` by exact filename (never the image archives) and return its local path."""
     from huggingface_hub import hf_hub_download
 
     if cache_dir is None:
@@ -88,17 +46,7 @@ def download_banglishrev(cache_dir: str = None) -> str:
 
 
 def flatten_reviews(raw_data) -> pd.DataFrame:
-    """Flatten BanglishRev's per-product JSON into one row per review.
-
-    `raw_data` is either a path to the downloaded JSON file (as returned by
-    download_banglishrev) or an already-parsed list of product dicts (used
-    directly by tests on a handful of rows, without touching the network).
-
-    Output columns: product_category, rating (int), text (str). Rows with
-    an unparseable/out-of-range rating or empty review text are dropped
-    here, since this is the one place that still has the raw, untrusted
-    values -- downstream steps can then assume `rating` is a clean int.
-    """
+    """Flatten BanglishRev's per-product JSON (path or parsed list) into one row per review: product_category, rating (int), text."""
     if isinstance(raw_data, (str,)):
         with open(raw_data, "r", encoding="utf-8") as f:
             products = json.load(f)
@@ -138,11 +86,7 @@ def flatten_reviews(raw_data) -> pd.DataFrame:
 
 
 def map_rating_to_label(rating: int) -> str:
-    """Map a 1-5 star rating to a 3-class sentiment label.
-
-    Thresholds (src.config.RATING_TO_LABEL): 1-2 -> negative, 3 -> neutral,
-    4-5 -> positive.
-    """
+    """Map a 1-5 star rating to positive/negative/neutral via src.config.RATING_TO_LABEL."""
     try:
         return config.RATING_TO_LABEL[int(rating)]
     except (KeyError, TypeError, ValueError):
@@ -150,15 +94,7 @@ def map_rating_to_label(rating: int) -> str:
 
 
 def _english_word_set():
-    """Lazily load and cache NLTK's English word list, lowercased.
-
-    NLTK's raw `words` corpus includes ~165 one- and two-letter entries
-    (abbreviations, archaic words, stray letters like "ar", "s", "m") that
-    coincidentally match common romanized-Bangla syllables ("ar", "ta",
-    "re") far too often, inflating false "english" matches on Banglish
-    text. Those are dropped except for a small curated allowlist of
-    genuinely common short English words.
-    """
+    """Lazily load/cache NLTK's English word list; short entries dropped (they falsely match romanized-Bangla) except a curated allowlist."""
     global _ENGLISH_WORDS
     if _ENGLISH_WORDS is None:
         from nltk.corpus import words as nltk_words
@@ -177,16 +113,7 @@ def _english_word_set():
 
 
 def _script_of(token: str) -> str:
-    """Classify one alphabetic token as 'bangla' or 'latin' by its first
-    Bangla-range or other-alphabetic character (mixed-script tokens are
-    rare in practice; the first matching character decides).
-
-    Uses `str.isalpha()` rather than an ASCII a-z check, so that stylized
-    Unicode letters (e.g. "Mathematical Bold Italic" glyphs, sometimes used
-    to dodge naive filters -- real example seen in this corpus:
-    "onak kharap" written as "𝒐𝒏𝒂𝒌 𝒌𝒉𝒂𝒓𝒂𝒑") are still recognized as latin
-    script rather than silently contributing no signal at all.
-    """
+    """Classify a token as 'bangla' or 'latin' by its first matching character; uses str.isalpha() so stylized Unicode letters still count as latin."""
     bangla_lo, bangla_hi = config.BANGLA_UNICODE_RANGE
     for ch in token:
         code = ord(ch)
@@ -198,22 +125,7 @@ def _script_of(token: str) -> str:
 
 
 def detect_language_condition(text: str) -> str:
-    """Heuristically tag a review's language condition.
-
-    Returns one of "english", "bangla", "banglish", "code_switched", using
-    a Unicode-script + English-dictionary heuristic:
-        - script ratio >= config.LANGUAGE_DETECTION_MIN_TOKEN_RATIO toward
-          Bangla script -> "bangla"
-        - script ratio >= that same threshold toward Latin script, and most
-          of those Latin tokens are real English words -> "english";
-          otherwise (mostly non-dictionary, i.e. romanized Bangla) ->
-          "banglish"
-        - neither script dominates (roughly balanced mix) -> "code_switched"
-
-    Symmetric thresholding (rather than "any Bangla character at all means
-    code-switched") avoids misclassifying an otherwise-English review that
-    contains one stray Bangla character/typo.
-    """
+    """Tag a review as english/bangla/banglish/code_switched via a Unicode-script + English-dictionary ratio heuristic (see src.config threshold)."""
     threshold = config.LANGUAGE_DETECTION_MIN_TOKEN_RATIO
     tokens = [t for t in _WORD_RE.findall(text)]
     scripts = [_script_of(t) for t in tokens]
@@ -222,10 +134,7 @@ def detect_language_condition(text: str) -> str:
     total = bangla_count + latin_count
 
     if total == 0:
-        # No alphabetic signal at all (e.g. emoji/digits only); such rows
-        # are rare after MIN_REVIEW_LENGTH_CHARS filtering and are given an
-        # arbitrary, harmless default rather than crashing the pipeline.
-        return "english"
+        return "english"  # no alphabetic signal at all; harmless default
 
     bangla_ratio = bangla_count / total
     if bangla_ratio >= threshold:
@@ -242,18 +151,7 @@ def detect_language_condition(text: str) -> str:
 
 
 def filter_familiar_categories(df: pd.DataFrame, allowed_categories) -> pd.DataFrame:
-    """Optionally restrict to reviews whose raw category text matches one of
-    `allowed_categories` (case-insensitive substring match).
-
-    `allowed_categories=None` (the project default, src.config.ALLOWED_CATEGORIES)
-    disables the restriction entirely and returns `df` unchanged. An earlier
-    5-bucket keyword allowlist was found -- by sampling the raw corpus -- to
-    exclude ~74% of it, including everyday items (Smartwatches, T-Shirts,
-    Shampoo, Toothpaste, Diapers, Coffee) that are just as "universally
-    familiar" as the original 5 buckets; the whole corpus is ordinary
-    e-commerce consumer goods by construction. Kept as a real (non-default)
-    option for anyone who wants to re-narrow the category scope.
-    """
+    """Optionally restrict to reviews whose category matches (case-insensitive substring) one of `allowed_categories`; None (default) disables it."""
     if not allowed_categories:
         return df
 
@@ -266,17 +164,7 @@ def filter_familiar_categories(df: pd.DataFrame, allowed_categories) -> pd.DataF
 
 
 def clean_and_dedupe(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop empty/too-short/duplicate/content-free reviews and strip
-    control characters.
-
-    "Content-free" means zero alphabetic tokens under _WORD_RE -- e.g. a
-    review that's pure mojibake ("??? ?????? ...", a garbled-encoding
-    artifact seen in this corpus). Such rows pass the length check but
-    carry no learnable signal, and downstream they become an all-padding
-    input that drives attention softmax to 0/0 = NaN, permanently
-    corrupting a model's weights via backprop. Filtering them here, once,
-    is cheaper and more robust than handling it at every consumer.
-    """
+    """Strip control chars, drop too-short/duplicate/content-free (zero-alphabetic-token, e.g. mojibake) reviews."""
     df = df.copy()
     df["text"] = df["text"].str.replace(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", regex=True).str.strip()
     df = df[df["text"].str.len() >= config.MIN_REVIEW_LENGTH_CHARS]
@@ -286,22 +174,7 @@ def clean_and_dedupe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def subsample_balanced(df: pd.DataFrame, target_size: int, per_group_cap: int = None) -> pd.DataFrame:
-    """Randomly (seeded) subsample to `target_size` total rows, balanced by
-    label, with each label's rows spread as evenly as possible across
-    language conditions.
-
-    Two-level, label-first design: `target_size` is split evenly across the
-    3 labels, and only *within* a label does the existing best-effort-then-
-    redistribute logic run across its 4 language groups (so a naturally
-    scarce condition like code-switched contributes everything it has, and
-    the shortfall is filled from the other language conditions *of that
-    same label*). This label-first structure matters at scale: this
-    corpus's raw label distribution is heavily skewed (~82% positive), so a
-    single flat redistribution across all 12 (label, language) cells would
-    let positive's much larger leftover pool dominate the redistribution
-    and silently break label balance -- verified this would happen before
-    picking this design (see the docstring's real numbers in src.config).
-    """
+    """Seeded subsample to `target_size`, balanced by label first, then best-effort-redistributed across language conditions within each label."""
     labels = df["label"].unique()
     n_labels = max(len(labels), 1)
     label_quota = target_size // n_labels
@@ -348,10 +221,7 @@ def assemble_dataset(cache_dir: str = None) -> pd.DataFrame:
     df = filter_familiar_categories(df, config.ALLOWED_CATEGORIES)
     df = clean_and_dedupe(df)
 
-    # Per-language cap within a label: allow a language condition to supply
-    # up to 3x its even split of that label's quota, so plentiful conditions
-    # (english/bangla/banglish) can absorb the shortfall left by a scarce
-    # one (code_switched) without an overly tight ceiling.
+    # Cap each language condition at 3x its even split, so plentiful ones absorb scarce ones' shortfall.
     label_quota = config.TARGET_DATASET_SIZE // len(config.LABELS)
     per_group_cap = max(50, (label_quota // len(config.LANGUAGE_CONDITIONS)) * 3)
     df = subsample_balanced(df, config.TARGET_DATASET_SIZE, per_group_cap)
@@ -364,16 +234,7 @@ def assemble_dataset(cache_dir: str = None) -> pd.DataFrame:
 
 
 def create_cv_splits(df: pd.DataFrame, n_folds: int = None, test_holdout: float = None):
-    """Carve off a stratified held-out test set, then assign every remaining
-    row a `fold` column (0..n_folds-1) for k-fold cross-validation.
-
-    Writes data/processed/test.csv (held-out, untouched by any training/CV
-    step) and data/processed/cv_pool.csv (the rest, with the `fold` column).
-    Both the test split and the fold assignment stratify by (label,
-    language) jointly where possible, falling back to label alone if some
-    (label, language) group is too small to stratify (a real possibility
-    for the naturally scarce code_switched condition).
-    """
+    """Carve off a stratified held-out test set, then add a `fold` column (0..n_folds-1) to the rest; writes both to data/processed/."""
     from sklearn.model_selection import StratifiedKFold, train_test_split
 
     n_folds = n_folds or config.N_FOLDS

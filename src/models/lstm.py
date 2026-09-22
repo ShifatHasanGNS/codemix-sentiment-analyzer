@@ -1,8 +1,4 @@
-"""
-LSTM classifier: same role as the RNN baseline but with gated long-range
-memory, used to test whether better long-range retention helps on
-code-switched input specifically.
-"""
+# LSTM classifier: gated long-range memory vs. the vanilla RNN baseline.
 
 import torch
 import torch.nn as nn
@@ -39,8 +35,7 @@ class LSTMClassifier(nn.Module):
         else:
             _, (hidden, _) = self.lstm(embedded)
 
-        # hidden: (num_layers * num_directions, batch, hidden_dim) -- take
-        # the last layer, concatenating both directions if bidirectional.
+        # Last layer; concat both directions if bidirectional.
         if self.num_directions == 2:
             final = torch.cat([hidden[-2], hidden[-1]], dim=-1)
         else:

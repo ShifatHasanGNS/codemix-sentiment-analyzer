@@ -1,15 +1,4 @@
-"""
-Small Transformer encoder implemented entirely from scratch (no pretrained
-transformer library), consisting of a limited number of self-attention
-layers with positional encoding, ending in a classification head.
-
-Uses torch.nn.TransformerEncoderLayer/TransformerEncoder as the underlying
-multi-head self-attention blocks -- this is still "from scratch" in the
-project's sense (random init, no pretrained weights loaded), it just reuses
-PyTorch's standard building block instead of re-deriving scaled dot-product
-attention by hand, matching the level of the RNN/LSTM models above (which
-likewise use torch.nn.RNN/LSTM rather than a hand-rolled recurrence).
-"""
+# Small from-scratch Transformer encoder (random init, no pretrained weights) + classification head.
 
 import math
 
@@ -26,7 +15,7 @@ class PositionalEncoding(nn.Module):
         pe = torch.zeros(max_len, embedding_dim)
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        self.register_buffer("pe", pe.unsqueeze(0))  # (1, max_len, embedding_dim)
+        self.register_buffer("pe", pe.unsqueeze(0))
 
     def forward(self, x):
         return x + self.pe[:, :x.size(1), :]
@@ -51,7 +40,7 @@ class TransformerEncoderClassifier(nn.Module):
 
     def forward(self, input_ids, attention_mask=None):
         if attention_mask is None:
-            padding_mask = input_ids == 0  # padding_idx=0; True = ignore
+            padding_mask = input_ids == 0
         else:
             padding_mask = attention_mask == 0
 
@@ -59,7 +48,7 @@ class TransformerEncoderClassifier(nn.Module):
         embedded = self.positional_encoding(embedded)
         encoded = self.encoder(embedded, src_key_padding_mask=padding_mask)
 
-        valid_mask = (~padding_mask).unsqueeze(-1).float()  # (batch, seq_len, 1)
+        valid_mask = (~padding_mask).unsqueeze(-1).float()
         pooled = (encoded * valid_mask).sum(dim=1) / valid_mask.sum(dim=1).clamp(min=1e-6)
 
         return self.classifier(self.dropout(pooled))

@@ -1,25 +1,4 @@
-"""
-Shared training loop for the five from-scratch neural models (ANN, RNN,
-LSTM, Attention, Transformer), parameterized by model name so the same
-script trains any of them.
-
-Uses config.N_FOLDS-fold cross-validation (on data/processed/cv_pool.csv) to
-report mean +/- std validation accuracy per model, then refits each model
-once on the *full* CV pool to produce the single deployed checkpoint saved
-to models_saved/. The tokenizer/Word2Vec built during that final refit (from
-the whole pool) are what models_saved/tokenizer.json and word2vec.model
-become -- what the Streamlit app and the Phase 9 text-completion demo load.
-
-Per fold, the tokenizer/Word2Vec/embedding-matrix are built from *that
-fold's train partition only* (never its val partition) to avoid leaking
-validation-fold vocabulary into feature extraction -- the textbook-correct
-k-fold approach. The ANN model classifies a pooled (mean-over-tokens)
-Word2Vec vector rather than a token sequence -- see `_pool_embeddings`.
-
-Usage:
-    python -m src.training.train_neural [--models ann,rnn,lstm,attention,transformer]
-                                         [--epochs N] [--lr LR]
-"""
+"""Shared k-fold CV training loop for the 5 from-scratch neural models; per-fold tokenizer/Word2Vec are built from that fold's train partition only, to avoid val-fold leakage."""
 
 import argparse
 
@@ -44,10 +23,7 @@ from src.utils.seed import set_seed
 
 MODEL_NAMES = ["ann", "rnn", "lstm", "attention", "transformer"]
 
-# Keyed by fold index (0..N_FOLDS-1) or "final" (the full-pool refit).
-# Rebuilding the tokenizer/Word2Vec is the expensive part of a fold's
-# assets, so this cache means a fold's assets are built once and reused
-# across all 5 models' calls to run_cross_validation(), not once per model.
+# Keyed by fold index or "final"; reused across all 5 models so assets are built once per fold.
 _ASSETS_CACHE = {}
 
 
@@ -112,9 +88,7 @@ def build_dataloaders(train_df, val_df, tokenizer, batch_size: int):
 
 
 def _build_assets(train_df, val_df, cache_key):
-    """Build tokenizer/Word2Vec/embedding-matrix/dataloaders from `train_df`
-    only (never `val_df`), cached by `cache_key` (a fold index, or "final"
-    for the full-pool refit)."""
+    """Build tokenizer/Word2Vec/embedding-matrix/dataloaders from train_df only, cached by cache_key."""
     if cache_key in _ASSETS_CACHE:
         return _ASSETS_CACHE[cache_key]
 
@@ -128,19 +102,14 @@ def _build_assets(train_df, val_df, cache_key):
 
     train_loader, val_loader = build_dataloaders(train_df, val_df, tokenizer, config.BATCH_SIZE)
 
-    # Inverse-frequency class weights: this corpus skews toward "positive",
-    # and cross-entropy on a weak model tends to collapse to predicting
-    # only the majority class under that skew rather than learning real
-    # decision boundaries. Weighting the loss counteracts that pull.
+    # Inverse-frequency class weights counteract the corpus's skew toward "positive".
     label_counts = torch.bincount(
         torch.tensor(train_loader.dataset.labels), minlength=len(config.LABELS)
     ).float()
     class_weights = label_counts.sum() / (len(config.LABELS) * label_counts)
 
     if cache_key == "final":
-        # This is the tokenizer/Word2Vec every downstream consumer (the
-        # Streamlit app, the Phase 9 text-completion demo, error analysis)
-        # loads -- built from the whole CV pool, not just one fold.
+        # Saved tokenizer/Word2Vec are loaded by the app, text-completion demo, and error analysis.
         ensure_dir(config.MODELS_SAVED_DIR)
         tokenizer.save(config.MODELS_SAVED_DIR / "tokenizer.json")
         save_word2vec(w2v, config.MODELS_SAVED_DIR / "word2vec.model")
@@ -155,8 +124,7 @@ def _build_assets(train_df, val_df, cache_key):
 
 
 def _pool_embeddings(input_ids, embedding_matrix_tensor):
-    """Mean-pool a Word2Vec embedding lookup over non-pad tokens -- the ANN
-    model's input, since it has no learned embedding layer of its own."""
+    """Mean-pool a Word2Vec embedding lookup over non-pad tokens, for the ANN model's input."""
     embedded = F.embedding(input_ids, embedding_matrix_tensor, padding_idx=0)
     mask = (input_ids != 0).unsqueeze(-1).float()
     return (embedded * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-6)
@@ -184,11 +152,7 @@ def _evaluate(model, model_name, loader, embedding_matrix_tensor, device):
 
 def train_one_model(model_name: str, train_loader, val_loader, embedding_matrix, vocab_size: int,
                      class_weights, num_epochs: int, learning_rate: float):
-    """Train `model_name` on already-built assets. If `val_loader` is None
-    (the full-pool refit case), there is no per-epoch validation signal --
-    training just runs `num_epochs` and returns the final weights, since
-    CV (run separately, on the same epoch budget) already validated that
-    choice."""
+    """Train model_name on already-built assets; val_loader=None means the full-pool refit (no per-epoch validation)."""
     if model_name not in MODEL_NAMES:
         raise ValueError(f"model_name must be one of {MODEL_NAMES}, got {model_name!r}")
 
@@ -232,8 +196,7 @@ def train_one_model(model_name: str, train_loader, val_loader, embedding_matrix,
 
 
 def run_cross_validation(model_name: str):
-    """config.N_FOLDS-fold CV for one model; returns per-fold accuracies
-    plus their mean/std."""
+    """k-fold CV for one model; returns per-fold accuracies plus mean/std."""
     cv_pool = load_split("cv_pool")
     fold_accuracies = []
 
@@ -257,8 +220,7 @@ def run_cross_validation(model_name: str):
 
 
 def refit_final(model_name: str):
-    """Train on the *full* CV pool (no held-out val) for the deployed
-    checkpoint saved to models_saved/{model_name}.pt."""
+    """Train on the full CV pool (no held-out val) for the deployed checkpoint."""
     cv_pool = load_split("cv_pool").drop(columns=["fold"])
     assets = _build_assets(cv_pool, None, cache_key="final")
     result = train_one_model(

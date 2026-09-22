@@ -1,6 +1,4 @@
-"""
-Shared text-cleaning utilities used before tokenization/feature extraction.
-"""
+"""Shared text-cleaning utilities used before tokenization/feature extraction."""
 
 import re
 
@@ -14,10 +12,7 @@ _QUOTE_MAP = str.maketrans({
 })
 _LATIN_RUN_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)*")
 
-# NLTK ships English stopwords; Bangla and Banglish (romanized Bangla) have
-# no equivalent corpus available offline, so these are small hand-curated
-# lists of common function words -- not exhaustive, but enough to strip the
-# highest-frequency noise words for each language condition.
+# Hand-curated (no offline corpus exists for these, unlike NLTK's English list).
 _BANGLA_STOPWORDS = frozenset([
     "এবং", "ও", "না", "যে", "এই", "সে", "তার", "এটি", "করে", "হয়",
     "থেকে", "জন্য", "কিন্তু", "আমি", "আপনি", "তুমি", "ইহা", "ওই", "কি",
@@ -48,9 +43,7 @@ def _english_stopword_set():
 
 
 def clean_text(text: str, lowercase: bool = True) -> str:
-    """Light cleaning: normalize smart quotes, collapse whitespace, and
-    (optionally) lowercase only Latin-script runs, leaving Bangla script
-    untouched since it has no case distinction."""
+    """Normalize smart quotes, collapse whitespace, lowercase Latin runs only (Bangla has no case)."""
     text = (text or "").translate(_QUOTE_MAP)
     text = _WHITESPACE_RE.sub(" ", text).strip()
     if lowercase:
@@ -59,9 +52,7 @@ def clean_text(text: str, lowercase: bool = True) -> str:
 
 
 def remove_stopwords(tokens: list, language: str) -> list:
-    """Drop stopwords appropriate to the review's detected language
-    condition. For "code_switched" text, all three stopword sets apply
-    since either language's function words may appear."""
+    """Drop stopwords for the given language condition; code_switched uses all three sets."""
     if language not in config.LANGUAGE_CONDITIONS:
         raise ValueError(f"language must be one of {config.LANGUAGE_CONDITIONS}, got {language!r}")
 
@@ -77,12 +68,7 @@ def remove_stopwords(tokens: list, language: str) -> list:
 
 
 def load_split(split_name: str):
-    """Load data/processed/{split_name}.csv.
-
-    "cv_pool" is the 90% k-fold pool (has a `fold` column; see
-    src.data.dataset_builder.get_fold to split it into a given fold's
-    train/val). "test" is the untouched 10% held-out final test set.
-    """
+    """Load data/processed/{split_name}.csv ("cv_pool" or "test")."""
     if split_name not in ("cv_pool", "test"):
         raise ValueError(f"split_name must be one of 'cv_pool', 'test', got {split_name!r}")
     return load_csv(config.DATA_PROCESSED_DIR / f"{split_name}.csv")

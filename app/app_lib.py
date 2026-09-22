@@ -1,9 +1,4 @@
-"""
-Shared constants, cached loaders, and helpers used by every page in
-app_pages/ -- model loading/inference, display names, sentiment styling,
-and the app's custom CSS. Kept out of streamlit_app.py so page modules can
-import it without pulling in that file's top-level st.navigation() call.
-"""
+"""Shared constants, cached model loaders, and UI helpers for app_pages/."""
 
 import sys
 from pathlib import Path
@@ -26,14 +21,9 @@ from src.utils.io_utils import load_checkpoint
 CLASSICAL_MODELS = ("ngram", "bow", "tfidf")
 NEURAL_MODELS = ("ann", "rnn", "lstm", "attention", "transformer")
 
-# Explicit (not left to st.dataframe's default) so every no-scroll table's
-# height calculation -- height=(rows+1)*TABLE_ROW_HEIGHT+3 -- stays in sync
-# with the actual row height rather than guessing at Streamlit's default,
-# which may not track the theme's baseFontSize.
+# row height used to size no-scroll st.dataframe tables
 TABLE_ROW_HEIGHT = 38
 
-# Human-readable names + a category prefix, so the sidebar picker and
-# result cards read as "Classical - TF-IDF" rather than a bare "tfidf".
 MODEL_DISPLAY = {
     "ngram": ("Classical", "N-Gram"),
     "bow": ("Classical", "Bag-of-Words"),
@@ -46,8 +36,6 @@ MODEL_DISPLAY = {
     "bert": ("Pretrained", "BERT"),
 }
 
-# label -> (badge color, Material icon), from the dataviz-adjacent
-# convention of green=positive/red=negative/gray=neutral.
 SENTIMENT_STYLE = {
     "positive": ("green", ":material/sentiment_satisfied:"),
     "negative": ("red", ":material/sentiment_dissatisfied:"),
@@ -61,20 +49,12 @@ def display_name(model_name: str) -> str:
 
 
 def short_name(model_name: str) -> str:
-    """Bare model name, no category prefix -- for tight spaces (the chart's
-    label gutter) where "Classical – Bag-of-Words" gets truncated to
-    "Classical – Bag..." and becomes unreadable."""
+    """Bare model name, no category prefix -- for tight display spaces."""
     return MODEL_DISPLAY.get(model_name, ("", model_name))[1]
 
 
 def style(is_dark: bool) -> str:
-    """Minimal, targeted CSS (explicitly requested -- otherwise this app
-    relies entirely on .streamlit/config.toml for theming, per the
-    developing-with-streamlit skill's "no custom CSS unless asked"
-    guidance). Scoped to specific widget keys via the .st-key-<key>
-    classes Streamlit generates, not broad/fragile selectors -- just a
-    fade-in on first render and a subtle hover lift on cards and buttons.
-    Shadow color flips for dark mode, where a black shadow is invisible."""
+    """Minimal CSS scoped to specific widget keys."""
     shadow = "rgba(0, 0, 0, 0.45)" if is_dark else "rgba(0, 0, 0, 0.08)"
     shadow_sm = "rgba(0, 0, 0, 0.5)" if is_dark else "rgba(0, 0, 0, 0.10)"
     sep_color = "rgba(161, 161, 170, 0.35)" if is_dark else "rgba(113, 113, 122, 0.30)"
@@ -102,15 +82,11 @@ def style(is_dark: bool) -> str:
   box-shadow: 0 2px 8px {shadow_sm};
 }}
 
-/* The review text_area is the app's primary input -- worth reading at a
-   clearly bigger size than general body text, not just the theme base. */
 .st-key-review_text textarea {{
   font-size: 1.15rem;
   line-height: 1.5;
 }}
 
-/* Subtle, soft-edged section separator (rounded-cap capsule, half width,
-   muted) -- a plain st.divider() reads as a heavy full-width rule. */
 .cm-soft-sep {{
   width: 50%;
   height: 3px;
@@ -124,8 +100,7 @@ def style(is_dark: bool) -> str:
 
 
 def soft_divider() -> None:
-    """A subtle, soft-edged half-width separator -- for spots that need a
-    section break lighter than st.divider()'s full-width rule."""
+    """A subtle, soft-edged half-width separator."""
     st.html('<div class="cm-soft-sep"></div>')
 
 
@@ -170,9 +145,7 @@ def load_all_models():
 
 @st.cache_data
 def load_model_performance():
-    """Each model's overall test-set accuracy from results/metrics_comparison.csv,
-    sorted best-first -- gives the sidebar real, useful content instead of
-    just a static blurb, and helps a user judge which models to trust."""
+    """Each model's overall test-set accuracy, sorted best-first."""
     path = config.RESULTS_DIR / "metrics_comparison.csv"
     if not path.exists():
         return {}
@@ -183,9 +156,7 @@ def load_model_performance():
 
 @st.cache_data
 def load_sample_pool():
-    """Every test-set sentence, grouped by language condition, for the
-    clickable example buttons -- a random one is drawn from the matching
-    list on each click, rather than always the same fixed sentence."""
+    """Test-set sentences grouped by language, for the example buttons."""
     try:
         test_df = load_split("test")
     except FileNotFoundError:
