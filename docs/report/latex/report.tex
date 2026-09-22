@@ -14,9 +14,40 @@
 \usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
+\usepackage{tikz}
+\usepackage{float}
+\usetikzlibrary{arrows.meta,positioning}
 
 \titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
 \titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+
+% --- Shared TikZ styles for the architecture/pipeline diagrams
+% (Section~\ref{sec:architectures}). Mirrors the palette/shape logic of
+% app/diagrams.py (the Streamlit app's auto-generated diagrams), rendered
+% statically here for the report. -----------------------------------------
+\tikzset{
+  stage/.style={rectangle, rounded corners=2pt, draw=black!55, thick,
+    fill=black!4, minimum height=0.9cm, text width=2.0cm, align=center,
+    font=\scriptsize, inner sep=2pt},
+  accentstage/.style={stage, draw=blue!60, fill=blue!8, line width=1pt},
+  pipearrow/.style={-{Stealth[length=2mm,width=1.6mm]}, thick, black!65},
+}
+\newcommand{\selfloopabove}[2]{%
+  \draw[pipearrow] (#1.160) to[bend left=65]
+    node[midway, above, font=\tiny, text width=2.4cm, align=center] {#2} (#1.20);%
+}
+\newcommand{\selfloopbelow}[2]{%
+  \draw[pipearrow] (#1.200) to[bend right=65]
+    node[midway, below, font=\tiny, text width=2.4cm, align=center] {#2} (#1.340);%
+}
+\newcommand{\archfig}[3]{%
+  \begin{figure}[H]
+  \centering
+  \resizebox{\linewidth}{!}{#2}
+  \caption{#1}
+  \label{#3}
+  \end{figure}%
+}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -40,7 +71,12 @@
 \begin{titlepage}
 \thispagestyle{empty}
 \centering
-\vspace*{2.5cm}
+\vspace*{1.5cm}
+
+{\LARGE \textbf{Khulna University of Engineering \& Technology}}\\[0.3em]
+{\large Department of Computer Science and Engineering}
+
+\vspace{1.5cm}
 
 {\large \textsc{Project Report}}
 
@@ -60,8 +96,6 @@ Pretrained Transformer Models on Bangla--English Code-Mixed Product Reviews}
 \vfill
 
 \begin{tabular}{rl}
-\textbf{Department:} & Computer Science and Engineering \\[0.3em]
-\textbf{University:} & Khulna University of Engineering and Technology \\[0.3em]
 \textbf{Course:} & Natural Language Processing Laboratory (CSE 4122) \\[0.3em]
 \textbf{Year / Term:} & 4th Year, 1st Term \\[0.3em]
 \textbf{Lab Group:} & B1 \\[0.3em]
@@ -74,6 +108,9 @@ Pretrained Transformer Models on Bangla--English Code-Mixed Product Reviews}
 {\large September 23, 2026}
 
 \end{titlepage}
+
+\tableofcontents
+\newpage
 
 % --- Abstract -------------------------------------------------------------
 \begin{abstract}
@@ -351,6 +388,207 @@ the neural models to counteract the corpus's natural label skew observed
 during raw data collection before balancing. All experiments fix a global
 random seed (42) for reproducibility.
 
+\subsection{Architecture and pipeline diagrams}
+\label{sec:architectures}
+Figure~\ref{fig:pipeline-overview} traces how a raw BanglishRev review turns
+into nine trained models and a served prediction. Figures~\ref{fig:arch-classical}--\ref{fig:arch-bert}
+then give a stage-by-stage view of each model family's own forward pass.
+These diagrams are drawn by hand for the report, but they mirror --
+stage for stage -- the diagrams the project's own \texttt{app/diagrams.py}
+auto-generates on the Streamlit app's Model Architecture page
+(Section~\ref{sec:implementation}) directly from each model's
+\texttt{forward()} method and from \texttt{src/config.py}'s live
+hyperparameters, so the two never drift apart.
+
+\begin{figure}[H]
+\centering
+\resizebox{!}{0.78\textheight}{%
+\begin{tikzpicture}[node distance=9mm and 9mm]
+\node[stage] (a) {BanglishRev raw\\reviews ($\sim$1.74M)};
+\node[stage, below=of a] (b) {Flatten, label from\\rating, detect language\\condition, clean \\\& dedupe (Sec.~\ref{sec:dataset})};
+\node[stage, below=of b] (c) {150{,}000 balanced\\reviews};
+\node[stage, below=of c] (d) {90\% CV pool\\/ 10\% held-out test};
+
+\node[stage, below left=13mm and 24mm of d] (c1) {\textbf{Classical}\\N-Gram / BoW / TF-IDF\\+ Logistic Regression\\(3 models)};
+\node[stage, below=13mm of d] (c2) {\textbf{From-scratch neural}\\ANN, RNN, LSTM,\\Attention, Transformer\\(5 models)};
+\node[accentstage, below right=13mm and 24mm of d] (c3) {\textbf{Pretrained}\\mBERT + fine-tuned\\classification head\\(1 model)};
+
+\node[stage, below=17mm of c2] (e) {Stratified 5-fold CV\\(8 models) or single\\held-out fine-tune (BERT)};
+\node[stage, below=of e] (f) {Held-out test\\evaluation (15{,}000 rows)};
+\node[stage, below=of f] (g) {Streamlit app:\\Analyzer + Model\\Architecture pages};
+
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d);
+\draw[pipearrow] (d) -- (c1);
+\draw[pipearrow] (d) -- (c2);
+\draw[pipearrow] (d) -- (c3);
+\draw[pipearrow] (c1) -- (e);
+\draw[pipearrow] (c2) -- (e);
+\draw[pipearrow] (c3) -- (e);
+\draw[pipearrow] (e) -- (f);
+\draw[pipearrow] (f) -- (g);
+\end{tikzpicture}%
+}
+\caption{End-to-end project pipeline: dataset construction
+(Section~\ref{sec:dataset}) feeds three model families, which converge on a
+common evaluation protocol and the interactive application
+(Section~\ref{sec:implementation}).}
+\label{fig:pipeline-overview}
+\end{figure}
+
+\archfig{Classical baselines: all three feature representations share the
+same tokenize $\to$ count $\to$ vectorize $\to$ logistic-regression
+pipeline and differ only in how the counting/weighting stage works.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=13mm of b, yshift=1.5cm] (c1) {\textbf{N-Gram}\\Count 1--2 word\\phrases ($\le$20k)};
+\node[stage, right=13mm of b] (c2) {\textbf{BoW}\\Count single\\words only};
+\node[stage, right=13mm of b, yshift=-1.5cm] (c3) {\textbf{TF-IDF}\\Count 1--2 word phrases;\\weight common$\downarrow$ distinctive$\uparrow$};
+\node[stage, right=13mm of c2] (d) {Feature vector\\($\le$20k dims)};
+\node[stage, right=8mm of d] (e) {Logistic\\Regression};
+\node[stage, right=8mm of e] (f) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c1);
+\draw[pipearrow] (b) -- (c2);
+\draw[pipearrow] (b) -- (c3);
+\draw[pipearrow] (c1) -- (d);
+\draw[pipearrow] (c2) -- (d);
+\draw[pipearrow] (c3) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\end{tikzpicture}%
+}{fig:arch-classical}
+
+\archfig{ANN: mean-pooled Word2Vec embeddings through two dense layers.
+Order-insensitive by construction -- the project's neural lower bound.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=8mm of b] (c) {Word2Vec embedding\\per word (100-dim)};
+\node[stage, right=8mm of c] (d) {Average all\\word vectors};
+\node[stage, right=8mm of d] (e) {Dense layers\\(64 $\to$ 32)};
+\node[stage, right=8mm of e] (f) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\end{tikzpicture}%
+}{fig:arch-ann}
+
+\archfig{RNN: a single-layer recurrent encoder over word embeddings,
+classified from its final hidden state. The self-loop marks the
+vanishing-memory limitation LSTM is introduced to address.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=8mm of b] (c) {Word2Vec embedding\\per word (100-dim)};
+\node[stage, right=8mm of c] (d) {RNN reads word by word\\(hidden state, 64-dim)};
+\node[stage, right=8mm of d] (e) {Final hidden\\state};
+\node[stage, right=8mm of e] (f) {Linear};
+\node[stage, right=8mm of f] (g) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\draw[pipearrow] (f) -- (g);
+\selfloopabove{d}{memory fades\\over distance}
+\end{tikzpicture}%
+}{fig:arch-rnn}
+
+\archfig{LSTM: a bidirectional, gated recurrent encoder; forward and
+backward final states are concatenated before classification.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=8mm of b] (c) {Word2Vec embedding\\per word (100-dim)};
+\node[stage, right=10mm of c, yshift=1.3cm] (d1) {LSTM forward $\rightarrow$\\(hidden 64-dim)};
+\node[stage, right=10mm of c, yshift=-1.3cm] (d2) {LSTM backward $\leftarrow$\\(hidden 64-dim)};
+\node[stage, right=10mm of c] (e) {Concatenate\\(128-dim)};
+\node[stage, right=8mm of e] (f) {Linear};
+\node[stage, right=8mm of f] (g) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d1);
+\draw[pipearrow] (c) -- (d2);
+\draw[pipearrow] (d1) -- (e);
+\draw[pipearrow] (d2) -- (e);
+\draw[pipearrow] (e) -- (f);
+\draw[pipearrow] (f) -- (g);
+\selfloopabove{d1}{gated memory}
+\selfloopbelow{d2}{gated memory}
+\end{tikzpicture}%
+}{fig:arch-lstm}
+
+\archfig{Additive (Bahdanau) attention: an LSTM encoder retains every
+time step's hidden state, which attention then weighs and combines into a
+single context vector, instead of relying only on the final state.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=8mm of b] (c) {Word2Vec embedding\\per word (100-dim)};
+\node[stage, right=8mm of c, text width=2.3cm] (d) {LSTM keeps every step's hidden state $h_1,\dots,h_T$ (64-dim)};
+\node[stage, right=8mm of d] (e) {Attention: weighs\\each $h_i$ by relevance};
+\node[stage, right=8mm of e] (f) {Context vector\\(weighted sum)};
+\node[stage, right=8mm of f] (g) {Linear};
+\node[stage, right=8mm of g] (h) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\draw[pipearrow] (f) -- (g);
+\draw[pipearrow] (g) -- (h);
+\selfloopabove{d}{per word}
+\end{tikzpicture}%
+}{fig:arch-attention}
+
+\archfig{Transformer encoder: sinusoidal positional encoding is added to
+the token embedding before self-attention, since attention itself carries
+no notion of token order.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {Tokenize};
+\node[stage, right=8mm of b, yshift=1.3cm] (c1) {Embedding\\(100-dim)};
+\node[stage, right=8mm of b, yshift=-1.3cm] (c2) {Positional\\encoding};
+\node[stage, right=8mm of b, text width=0.6cm] (plus) {$+$};
+\node[stage, right=10mm of plus, text width=2.3cm] (d) {Self-attention $\times$2 layers, 4 heads each, ff-dim 128};
+\node[stage, right=8mm of d] (e) {Mean-pool\\(non-pad tokens)};
+\node[stage, right=8mm of e] (f) {Linear};
+\node[stage, right=8mm of f] (g) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c1);
+\draw[pipearrow] (b) -- (c2);
+\draw[pipearrow] (c1) -- (plus);
+\draw[pipearrow] (c2) -- (plus);
+\draw[pipearrow] (plus) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\draw[pipearrow] (f) -- (g);
+\end{tikzpicture}%
+}{fig:arch-transformer}
+
+\archfig{mBERT: the project's only pretrained model, fine-tuned end-to-end
+with a new classification head on top of the [CLS] token's contextual
+representation.}{%
+\begin{tikzpicture}
+\node[stage] (a) {Review text};
+\node[stage, right=8mm of a] (b) {mBERT's own\\subword tokenizer};
+\node[accentstage, right=8mm of b, text width=2.6cm] (c) {Pretrained mBERT encoder (already trained by Google on 104 languages, incl.\ Bangla)};
+\node[stage, right=10mm of c] (d) {[CLS] token's\\vector};
+\node[stage, right=8mm of d, text width=2.3cm] (e) {New classifier head (fine-tuned here on 5k reviews)};
+\node[stage, right=8mm of e] (f) {3-class\\prediction};
+\draw[pipearrow] (a) -- (b);
+\draw[pipearrow] (b) -- (c);
+\draw[pipearrow] (c) -- (d);
+\draw[pipearrow] (d) -- (e);
+\draw[pipearrow] (e) -- (f);
+\end{tikzpicture}%
+}{fig:arch-bert}
+
 % =======================================================================
 \section{Implementation}
 \label{sec:implementation}
@@ -403,7 +641,7 @@ cross-validated; trained on a 5{,}000-row subsample versus $\sim$108{,}000
 rows for the other models (Section~\ref{sec:methodology}).
 \end{table}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{assets/metrics_comparison.png}
 \caption{Test-set accuracy by model and language condition.}

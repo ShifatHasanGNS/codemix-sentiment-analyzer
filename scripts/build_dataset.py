@@ -1,18 +1,7 @@
 #!/usr/bin/env python
 """
-CLI entry point: downloads BanglishRev, builds, and splits the dataset --
-fully automated, no manual data entry.
-
 Usage:
     python scripts/build_dataset.py [--seed SEED] [--target-size N] [--cache-dir DIR]
-
-Note: the first run needs internet access to fetch BanglishRev's review
-JSON (~1.9GB) from Hugging Face; subsequent runs reuse the local
-huggingface_hub cache. This is a long-running command (see CLAUDE.md's
-"long-running commands" ground rule): run it in your own terminal. At the
-current TARGET_DATASET_SIZE (150,000) it must flatten/tag the full ~1.74M
-raw reviews (not a small sample), so expect a few minutes even with the
-raw file cached.
 """
 
 import argparse

@@ -1,9 +1,4 @@
-"""
-Reproducibility helper.
-
-Every training script (classical, neural, BERT) should call set_seed()
-first, using src.config.RANDOM_SEED as the default.
-"""
+"""Reproducibility helper; every training script calls set_seed() first."""
 
 import random
 
@@ -12,7 +7,6 @@ import torch
 
 
 def set_seed(seed: int) -> None:
-    """Seed all relevant RNGs for reproducible runs."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

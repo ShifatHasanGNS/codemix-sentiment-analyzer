@@ -1,11 +1,4 @@
-"""
-Pretrained multilingual BERT wrapper (mBERT or XLM-R, via HuggingFace
-transformers), fine-tuned on the project's classification task and used as
-an upper-bound benchmark against the five from-scratch models.
-
-This is the ONLY model in the project that uses pretrained weights and its
-own native (sub-word) tokenizer, per the project's scope constraints.
-"""
+# Pretrained mBERT wrapper -- the only model here using pretrained weights.
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 

@@ -1,13 +1,4 @@
-"""
-Qualitative error analysis: collects representative misclassified examples
-per model (ideally covering more than one language condition each) with a
-short note on the likely cause (e.g. unseen code-switch pattern, out-of-
-vocabulary tokens, class imbalance, tokenization artifact).
-
-Also used to qualitatively showcase a handful of outputs from the bonus
-sequence-generation demo (src.generation.text_completion) -- not scored
-numerically, just presented as examples in the final report.
-"""
+"""Qualitative error analysis: misclassified examples per model with a likely-cause note, plus generation demo samples."""
 
 from pathlib import Path
 
@@ -23,9 +14,7 @@ def collect_misclassified_examples(model_name: str, predictions_df, num_examples
     if len(wrong) == 0:
         return wrong.assign(note=[])
 
-    # Spread the sample across language conditions rather than taking the
-    # first N rows, so a report isn't dominated by whichever language
-    # condition happens to have the most errors.
+    # Spread the sample across language conditions rather than taking the first N rows.
     per_language_quota = max(1, num_examples // max(len(wrong["language"].unique()), 1))
     sampled = (
         wrong.groupby("language", group_keys=False)
@@ -81,9 +70,7 @@ def write_error_report(all_examples: dict, output_path: str) -> None:
 
 
 def collect_generation_samples(prompts: list):
-    """Runs TextCompletionModel.generate on a few fixed prompts (one per
-    language condition, where sensible) using both the LSTM and Transformer
-    checkpoints, and records the outputs for the error report."""
+    """Runs TextCompletionModel.generate on fixed prompts using the LSTM and Transformer checkpoints."""
     from src.data.tokenizer import CodeMixTokenizer
     from src.generation.text_completion import TextCompletionModel
 

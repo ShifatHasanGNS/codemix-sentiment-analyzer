@@ -1,9 +1,4 @@
-"""
-Computes classification metrics for every trained model, broken down overall
-and per language condition (English / Bangla / Banglish / code-switched),
-so the project's central research question -- "which technique is most
-robust to code-switched input?" -- can be answered directly from the output.
-"""
+"""Computes classification metrics per model, broken down overall and per language condition."""
 
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -44,15 +39,7 @@ def build_comparison_table(all_model_results: dict) -> pd.DataFrame:
 
 
 def summarize_cv_results(fold_results: dict) -> pd.DataFrame:
-    """Build a per-model k-fold CV summary (mean +/- std validation
-    accuracy) from the `cv_result` dicts returned by
-    src.training.train_classical/train_neural's run_cross_validation(),
-    and save it to results/cv_summary.csv.
-
-    This reports the *validation* methodology (k-fold CV on the training
-    pool); it's a separate artifact from metrics_comparison.csv, which
-    reports the final refit models' performance on the untouched test set.
-    """
+    """Per-model k-fold CV summary (mean +/- std val accuracy), saved to results/cv_summary.csv."""
     rows = [
         {
             "model": cv_result["model_name"],
@@ -71,24 +58,12 @@ def summarize_cv_results(fold_results: dict) -> pd.DataFrame:
 
 
 def plot_comparison_chart(comparison_table):
-    """Grouped bar chart: accuracy per model, grouped by language condition
-    -- this is the chart that actually answers the project's central
-    question ("which technique is most robust to code-switched input?"),
-    rather than just an overall-accuracy ranking.
-
-    Colors are the first 4 slots of the dataviz skill's validated
-    categorical palette (fixed order, not cycled); two of those slots sit
-    below 3:1 contrast against the chart surface, so per the skill's
-    "relief rule" this chart ships alongside metrics_comparison.csv (the
-    table view) rather than leaning on in-chart text contrast alone.
-    """
+    """Grouped bar chart: accuracy per model, grouped by language condition."""
     import matplotlib.pyplot as plt
     import numpy as np
 
     languages = [l for l in config.LANGUAGE_CONDITIONS if l in comparison_table["language"].unique()]
-    # Fixed-order categorical palette (dataviz skill reference palette,
-    # slots 1-4: blue, orange, aqua, yellow), validated via
-    # scripts/validate_palette.js for adjacent-pair CVD safety.
+    # Fixed-order categorical palette, validated for adjacent-pair CVD safety.
     palette = {
         "english": "#2a78d6", "bangla": "#eb6834",
         "banglish": "#1baf7a", "code_switched": "#eda100",

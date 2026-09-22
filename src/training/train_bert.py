@@ -1,20 +1,4 @@
-"""
-Fine-tunes the pretrained multilingual BERT benchmark
-(src.models.bert_model) on a bounded subsample of the CV pool.
-
-Deliberate scope reduction, agreed with the user given a 150k-row corpus:
-unlike the classical/from-scratch models, BERT does NOT run k-fold CV here
--- full 5-fold CV for mBERT (~178M params) at this scale was estimated to
-add 3-5+ hours of CPU time for little reporting benefit. Instead it stays
-on a single held-out fine-tune: src.config.BERT_TRAIN_SUBSAMPLE_SIZE (5,000)
-and BERT_VAL_SUBSAMPLE_SIZE (1,000) non-overlapping random rows drawn from
-data/processed/cv_pool.csv, for src.config.BERT_NUM_EPOCHS (2) epochs.
-Evaluated against the same held-out data/processed/test.csv as every other
-model (see scripts/run_pipeline.py's evaluation step).
-
-Usage:
-    python -m src.training.train_bert [--epochs N] [--lr LR]
-"""
+"""Fine-tunes mBERT on a bounded subsample (single split, no k-fold CV -- full CV at this scale is too slow on CPU)."""
 
 import argparse
 
