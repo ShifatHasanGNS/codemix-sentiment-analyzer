@@ -106,13 +106,22 @@ def soft_divider() -> None:
 
 @st.cache_resource
 def load_all_models():
-    models = {"classical": {}, "neural": {}, "bert": None, "tokenizer": None, "embedding_matrix": None}
+    models = {
+        "classical": {},
+        "neural": {},
+        "bert": None,
+        "tokenizer": None,
+        "embedding_matrix": None,
+    }
 
     for name in CLASSICAL_MODELS:
         path = config.MODELS_SAVED_DIR / f"classical_{name}.pt"
         if path.exists():
             checkpoint = load_checkpoint(path)
-            models["classical"][name] = (checkpoint["vectorizer"], checkpoint["classifier"])
+            models["classical"][name] = (
+                checkpoint["vectorizer"],
+                checkpoint["classifier"],
+            )
 
     tokenizer_path = config.MODELS_SAVED_DIR / "tokenizer.json"
     word2vec_path = config.MODELS_SAVED_DIR / "word2vec.model"
@@ -120,13 +129,17 @@ def load_all_models():
         tokenizer = CodeMixTokenizer.load(tokenizer_path)
         w2v = load_word2vec(word2vec_path)
         models["tokenizer"] = tokenizer
-        models["embedding_matrix"] = build_embedding_matrix(w2v, tokenizer.token_to_id, config.EMBEDDING_DIM)
+        models["embedding_matrix"] = build_embedding_matrix(
+            w2v, tokenizer.token_to_id, config.EMBEDDING_DIM
+        )
 
         for name in NEURAL_MODELS:
             path = config.MODELS_SAVED_DIR / f"{name}.pt"
             if path.exists():
                 checkpoint = load_checkpoint(path)
-                model = build_model(name, checkpoint["vocab_size"], models["embedding_matrix"])
+                model = build_model(
+                    name, checkpoint["vocab_size"], models["embedding_matrix"]
+                )
                 model.load_state_dict(checkpoint["state_dict"])
                 model.eval()
                 models["neural"][name] = model
@@ -150,7 +163,9 @@ def load_model_performance():
     if not path.exists():
         return {}
     metrics_df = pd.read_csv(path)
-    overall = metrics_df[metrics_df["language"] == "overall"].sort_values("accuracy", ascending=False)
+    overall = metrics_df[metrics_df["language"] == "overall"].sort_values(
+        "accuracy", ascending=False
+    )
     return dict(zip(overall["model"], overall["accuracy"]))
 
 
@@ -179,11 +194,19 @@ def predict_with_model(model_name: str, models: dict, text: str):
     if model_name in NEURAL_MODELS:
         tokenizer = models["tokenizer"]
         model = models["neural"][model_name]
-        input_ids = torch.tensor([tokenizer.encode(text, config.MAX_SEQUENCE_LENGTH)], dtype=torch.long)
-        lengths = torch.tensor([max(1, min(len(tokenizer.tokenize(text)), config.MAX_SEQUENCE_LENGTH))])
-        embedding_matrix_tensor = torch.as_tensor(models["embedding_matrix"], dtype=torch.float32)
+        input_ids = torch.tensor(
+            [tokenizer.encode(text, config.MAX_SEQUENCE_LENGTH)], dtype=torch.long
+        )
+        lengths = torch.tensor(
+            [max(1, min(len(tokenizer.tokenize(text)), config.MAX_SEQUENCE_LENGTH))]
+        )
+        embedding_matrix_tensor = torch.as_tensor(
+            models["embedding_matrix"], dtype=torch.float32
+        )
         with torch.no_grad():
-            logits = _forward(model, model_name, input_ids, lengths, embedding_matrix_tensor)
+            logits = _forward(
+                model, model_name, input_ids, lengths, embedding_matrix_tensor
+            )
             probs = torch.softmax(logits[0], dim=-1)
         best = int(probs.argmax())
         return config.LABELS[best], float(probs[best])

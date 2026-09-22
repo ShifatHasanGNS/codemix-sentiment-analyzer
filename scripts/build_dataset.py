@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Usage:
     python scripts/build_dataset.py [--seed SEED] [--target-size N] [--cache-dir DIR]
@@ -30,8 +29,10 @@ def main():
     cv_pool, test_df = create_cv_splits(df)
 
     print(f"\nAssembled {len(df)} total reviews -> data/raw/dataset.csv")
-    print(f"CV pool: {len(cv_pool)} rows ({config.N_FOLDS} folds) | "
-          f"Held-out test: {len(test_df)} rows\n")
+    print(
+        f"CV pool: {len(cv_pool)} rows ({config.N_FOLDS} folds) | "
+        f"Held-out test: {len(test_df)} rows\n"
+    )
 
     print(f"--- cv_pool ({len(cv_pool)} rows) ---")
     print(cv_pool.groupby(["label", "language"]).size().unstack(fill_value=0))

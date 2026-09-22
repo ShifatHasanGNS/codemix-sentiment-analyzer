@@ -11,9 +11,7 @@ sys.path.insert(0, str(_APP_DIR))
 
 import pandas as pd
 import streamlit as st
-
 from app_lib import (
-    NEURAL_MODELS,
     SENTIMENT_STYLE,
     TABLE_ROW_HEIGHT,
     display_name,
@@ -30,7 +28,9 @@ def render_verdict(results: dict) -> None:
     """Consensus summary: majority-vote label across selected models."""
     labels = [label for label, _ in results.values()]
     overall_label, votes = Counter(labels).most_common(1)[0]
-    agreeing_confidences = [conf for label, conf in results.values() if label == overall_label]
+    agreeing_confidences = [
+        conf for label, conf in results.values() if label == overall_label
+    ]
     avg_confidence = sum(agreeing_confidences) / len(agreeing_confidences)
     color, icon = SENTIMENT_STYLE[overall_label]
 
@@ -38,7 +38,9 @@ def render_verdict(results: dict) -> None:
         st.caption("Overall verdict")
         st.badge(overall_label.capitalize(), icon=icon, color=color)
         total = len(results)
-        agreement = "unanimous" if votes == total else f"{votes} of {total} models agree"
+        agreement = (
+            "unanimous" if votes == total else f"{votes} of {total} models agree"
+        )
         st.caption(f"{agreement} · {avg_confidence:.0%} average confidence")
 
 
@@ -50,7 +52,9 @@ def render_model_cards(results: dict) -> None:
             color, icon = SENTIMENT_STYLE[label]
             with st.container(border=True, width=200, key=f"model_card_{model_name}"):
                 st.markdown(f"**{display_name(model_name)}**")
-                with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+                with st.container(
+                    horizontal=True, vertical_alignment="center", gap="small"
+                ):
                     st.badge(label.capitalize(), icon=icon, color=color)
                     st.caption(f"{confidence:.0%}")
 
@@ -58,10 +62,22 @@ def render_model_cards(results: dict) -> None:
 def render_comparison_chart(results: dict) -> None:
     st.subheader("Confidence by model", divider="gray")
     with st.container(border=True):
-        chart_data = pd.Series(
-            {short_name(name): conf for name, (_, conf) in results.items()}, name="confidence"
-        ).sort_values().to_frame()
-        st.bar_chart(chart_data, y="confidence", color="primary", x_label="", y_label="Confidence", horizontal=True)
+        chart_data = (
+            pd.Series(
+                {short_name(name): conf for name, (_, conf) in results.items()},
+                name="confidence",
+            )
+            .sort_values()
+            .to_frame()
+        )
+        st.bar_chart(
+            chart_data,
+            y="confidence",
+            color="primary",
+            x_label="",
+            y_label="Confidence",
+            horizontal=True,
+        )
 
 
 def _use_sample(language: str, pool: dict) -> None:
@@ -69,7 +85,9 @@ def _use_sample(language: str, pool: dict) -> None:
 
 
 st.title("Code-Mix Sentiment Analyzer")
-st.markdown("Compare sentiment predictions across 9 models, for English, Bangla, Banglish, and code-switched reviews.")
+st.markdown(
+    "Compare sentiment predictions across 9 models, for English, Bangla, Banglish, and code-switched reviews."
+)
 
 models = load_all_models()
 available = list(models["classical"].keys()) + list(models["neural"].keys())
@@ -77,7 +95,10 @@ if models["bert"] is not None:
     available.append("bert")
 
 if not available:
-    st.error("No trained models found. Run the training scripts first (see README.md).", icon=":material/error:")
+    st.error(
+        "No trained models found. Run the training scripts first (see README.md).",
+        icon=":material/error:",
+    )
     st.stop()
 
 performance = load_model_performance()
@@ -99,7 +120,10 @@ with st.sidebar:
         soft_divider()
         st.subheader("Test accuracy", width="content")
         performance_df = pd.DataFrame(
-            {"Model": [short_name(name) for name in performance], "Accuracy": list(performance.values())}
+            {
+                "Model": [short_name(name) for name in performance],
+                "Accuracy": list(performance.values()),
+            }
         )
         st.dataframe(
             performance_df,
@@ -108,13 +132,19 @@ with st.sidebar:
             row_height=TABLE_ROW_HEIGHT,
             height=(len(performance_df) + 1) * TABLE_ROW_HEIGHT + 3,
             column_config={
-                "Accuracy": st.column_config.ProgressColumn("Accuracy", format="percent", min_value=0, max_value=1),
+                "Accuracy": st.column_config.ProgressColumn(
+                    "Accuracy", format="percent", min_value=0, max_value=1
+                ),
             },
         )
 
     soft_divider()
     st.caption("9 models · 150k real reviews.")
-    st.page_link("app_pages/architecture.py", label="How do these models work?", icon=":material/school:")
+    st.page_link(
+        "app_pages/architecture.py",
+        label="How do these models work?",
+        icon=":material/school:",
+    )
 
 sample_pool = load_sample_pool()
 if sample_pool:
@@ -135,7 +165,9 @@ with st.form("analyze_form", border=False):
         placeholder="e.g. product ta khub valo, kintu delivery slow silo",
         key="review_text",
     )
-    submitted = st.form_submit_button("Analyze", icon=":material/query_stats:", type="primary")
+    submitted = st.form_submit_button(
+        "Analyze", icon=":material/query_stats:", type="primary"
+    )
 
 text = st.session_state.get("review_text", "")
 
@@ -144,11 +176,15 @@ if submitted:
         st.warning("Enter a review before analyzing.", icon=":material/warning:")
         st.stop()
     if not selected_models:
-        st.warning("Select at least one model in the sidebar.", icon=":material/warning:")
+        st.warning(
+            "Select at least one model in the sidebar.", icon=":material/warning:"
+        )
         st.stop()
 
     with st.spinner("Running selected models…"):
-        results = {name: predict_with_model(name, models, text) for name in selected_models}
+        results = {
+            name: predict_with_model(name, models, text) for name in selected_models
+        }
 
     st.space("small")
     render_verdict(results)
@@ -157,4 +193,6 @@ if submitted:
     st.space("small")
     render_comparison_chart(results)
 else:
-    st.info("Enter a review above and click **Analyze**.", icon=":material/arrow_upward:")
+    st.info(
+        "Enter a review above and click **Analyze**.", icon=":material/arrow_upward:"
+    )

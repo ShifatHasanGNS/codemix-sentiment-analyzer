@@ -6,23 +6,77 @@ from src import config
 from src.utils.io_utils import load_csv
 
 _WHITESPACE_RE = re.compile(r"\s+")
-_QUOTE_MAP = str.maketrans({
-    "‘": "'", "’": "'",
-    "“": '"', "”": '"',
-})
+_QUOTE_MAP = str.maketrans(
+    {
+        "‘": "'",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+    }
+)
 _LATIN_RUN_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)*")
 
 # Hand-curated (no offline corpus exists for these, unlike NLTK's English list).
-_BANGLA_STOPWORDS = frozenset([
-    "এবং", "ও", "না", "যে", "এই", "সে", "তার", "এটি", "করে", "হয়",
-    "থেকে", "জন্য", "কিন্তু", "আমি", "আপনি", "তুমি", "ইহা", "ওই", "কি",
-    "কেন", "কোথায়", "সঙ্গে", "পর", "আগে", "এখন", "তবে", "তাই", "একটি",
-])
-_BANGLISH_STOPWORDS = frozenset([
-    "ami", "tumi", "apni", "ei", "oi", "ba", "na", "ke", "kintu", "jonno",
-    "theke", "hoy", "kore", "ekta", "khub", "onek", "ekdom", "kono", "sob",
-    "eta", "oke", "tar", "amar", "tomar",
-])
+_BANGLA_STOPWORDS = frozenset(
+    [
+        "এবং",
+        "ও",
+        "না",
+        "যে",
+        "এই",
+        "সে",
+        "তার",
+        "এটি",
+        "করে",
+        "হয়",
+        "থেকে",
+        "জন্য",
+        "কিন্তু",
+        "আমি",
+        "আপনি",
+        "তুমি",
+        "ইহা",
+        "ওই",
+        "কি",
+        "কেন",
+        "কোথায়",
+        "সঙ্গে",
+        "পর",
+        "আগে",
+        "এখন",
+        "তবে",
+        "তাই",
+        "একটি",
+    ]
+)
+_BANGLISH_STOPWORDS = frozenset(
+    [
+        "ami",
+        "tumi",
+        "apni",
+        "ei",
+        "oi",
+        "ba",
+        "na",
+        "ke",
+        "kintu",
+        "jonno",
+        "theke",
+        "hoy",
+        "kore",
+        "ekta",
+        "khub",
+        "onek",
+        "ekdom",
+        "kono",
+        "sob",
+        "eta",
+        "oke",
+        "tar",
+        "amar",
+        "tomar",
+    ]
+)
 
 _ENGLISH_STOPWORDS = None  # lazily-built cache; see _english_stopword_set()
 
@@ -54,7 +108,9 @@ def clean_text(text: str, lowercase: bool = True) -> str:
 def remove_stopwords(tokens: list, language: str) -> list:
     """Drop stopwords for the given language condition; code_switched uses all three sets."""
     if language not in config.LANGUAGE_CONDITIONS:
-        raise ValueError(f"language must be one of {config.LANGUAGE_CONDITIONS}, got {language!r}")
+        raise ValueError(
+            f"language must be one of {config.LANGUAGE_CONDITIONS}, got {language!r}"
+        )
 
     stopword_sets = []
     if language in ("english", "code_switched"):
@@ -70,5 +126,7 @@ def remove_stopwords(tokens: list, language: str) -> list:
 def load_split(split_name: str):
     """Load data/processed/{split_name}.csv ("cv_pool" or "test")."""
     if split_name not in ("cv_pool", "test"):
-        raise ValueError(f"split_name must be one of 'cv_pool', 'test', got {split_name!r}")
+        raise ValueError(
+            f"split_name must be one of 'cv_pool', 'test', got {split_name!r}"
+        )
     return load_csv(config.DATA_PROCESSED_DIR / f"{split_name}.csv")

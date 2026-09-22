@@ -9,7 +9,11 @@ from src.utils.io_utils import ensure_dir, save_csv
 
 def compute_metrics(y_true: list, y_pred: list) -> dict:
     precision, recall, f1, _ = precision_recall_fscore_support(
-        y_true, y_pred, labels=config.LABELS, average="macro", zero_division=0,
+        y_true,
+        y_pred,
+        labels=config.LABELS,
+        average="macro",
+        zero_division=0,
     )
     return {
         "accuracy": accuracy_score(y_true, y_pred),
@@ -23,12 +27,26 @@ def evaluate_model_by_language(model_name: str, predictions_df) -> pd.DataFrame:
     rows = []
     for language, group in predictions_df.groupby("language"):
         metrics = compute_metrics(group["true_label"], group["predicted_label"])
-        rows.append({"model": model_name, "language": language, "n": len(group), **metrics})
+        rows.append(
+            {"model": model_name, "language": language, "n": len(group), **metrics}
+        )
 
-    overall_metrics = compute_metrics(predictions_df["true_label"], predictions_df["predicted_label"])
-    rows.append({"model": model_name, "language": "overall", "n": len(predictions_df), **overall_metrics})
+    overall_metrics = compute_metrics(
+        predictions_df["true_label"], predictions_df["predicted_label"]
+    )
+    rows.append(
+        {
+            "model": model_name,
+            "language": "overall",
+            "n": len(predictions_df),
+            **overall_metrics,
+        }
+    )
 
-    return pd.DataFrame(rows, columns=["model", "language", "n", "accuracy", "precision", "recall", "f1"])
+    return pd.DataFrame(
+        rows,
+        columns=["model", "language", "n", "accuracy", "precision", "recall", "f1"],
+    )
 
 
 def build_comparison_table(all_model_results: dict) -> pd.DataFrame:
@@ -49,7 +67,9 @@ def summarize_cv_results(fold_results: dict) -> pd.DataFrame:
         }
         for cv_result in fold_results.values()
     ]
-    table = pd.DataFrame(rows, columns=["model", "n_folds", "mean_accuracy", "std_accuracy"])
+    table = pd.DataFrame(
+        rows, columns=["model", "n_folds", "mean_accuracy", "std_accuracy"]
+    )
     table = table.sort_values("mean_accuracy", ascending=False).reset_index(drop=True)
 
     ensure_dir(config.RESULTS_DIR)
@@ -62,20 +82,29 @@ def plot_comparison_chart(comparison_table):
     import matplotlib.pyplot as plt
     import numpy as np
 
-    languages = [l for l in config.LANGUAGE_CONDITIONS if l in comparison_table["language"].unique()]
+    languages = [
+        l
+        for l in config.LANGUAGE_CONDITIONS
+        if l in comparison_table["language"].unique()
+    ]
     # Fixed-order categorical palette, validated for adjacent-pair CVD safety.
     palette = {
-        "english": "#2a78d6", "bangla": "#eb6834",
-        "banglish": "#1baf7a", "code_switched": "#eda100",
+        "english": "#2a78d6",
+        "bangla": "#eb6834",
+        "banglish": "#1baf7a",
+        "code_switched": "#eda100",
     }
 
     models = (
         comparison_table[comparison_table["language"] == "overall"]
-        .sort_values("accuracy", ascending=False)["model"].tolist()
+        .sort_values("accuracy", ascending=False)["model"]
+        .tolist()
     )
-    pivot = comparison_table[comparison_table["language"] != "overall"].pivot(
-        index="model", columns="language", values="accuracy"
-    ).loc[models]
+    pivot = (
+        comparison_table[comparison_table["language"] != "overall"]
+        .pivot(index="model", columns="language", values="accuracy")
+        .loc[models]
+    )
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
     x = np.arange(len(models))
@@ -83,12 +112,20 @@ def plot_comparison_chart(comparison_table):
 
     for i, language in enumerate(languages):
         offset = (i - (len(languages) - 1) / 2) * bar_width
-        ax.bar(x + offset, pivot[language], width=bar_width * 0.9,
-               label=language, color=palette[language], edgecolor="none")
+        ax.bar(
+            x + offset,
+            pivot[language],
+            width=bar_width * 0.9,
+            label=language,
+            color=palette[language],
+            edgecolor="none",
+        )
 
     ax.set_ylim(0, 1)
     ax.set_ylabel("Accuracy", color="#3a3a3a")
-    ax.set_title("Model comparison: test accuracy by language condition", color="#1a1a1a")
+    ax.set_title(
+        "Model comparison: test accuracy by language condition", color="#1a1a1a"
+    )
     ax.set_xticks(x)
     ax.set_xticklabels(models, rotation=20, ha="right", color="#3a3a3a")
     ax.tick_params(axis="y", colors="#3a3a3a")

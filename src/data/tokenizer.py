@@ -64,16 +64,23 @@ class CodeMixTokenizer:
         return len(self.token_to_id)
 
     def save(self, path: str) -> None:
-        save_json({
-            "lowercase": self.lowercase,
-            "remove_punctuation": self.remove_punctuation,
-            "token_to_id": self.token_to_id,
-        }, path)
+        save_json(
+            {
+                "lowercase": self.lowercase,
+                "remove_punctuation": self.remove_punctuation,
+                "token_to_id": self.token_to_id,
+            },
+            path,
+        )
 
     @classmethod
     def load(cls, path: str) -> "CodeMixTokenizer":
         state = load_json(path)
-        tokenizer = cls(lowercase=state["lowercase"], remove_punctuation=state["remove_punctuation"])
+        tokenizer = cls(
+            lowercase=state["lowercase"], remove_punctuation=state["remove_punctuation"]
+        )
         tokenizer.token_to_id = state["token_to_id"]
-        tokenizer.id_to_token = {int(idx): token for token, idx in tokenizer.token_to_id.items()}
+        tokenizer.id_to_token = {
+            int(idx): token for token, idx in tokenizer.token_to_id.items()
+        }
         return tokenizer

@@ -1,7 +1,7 @@
 """Bonus autoregressive text-completion demo: reuses a trained LSTM/Transformer's embedding+encoder as a warm start and briefly trains a linear LM head via teacher forcing. Qualitative only, not scored."""
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from src import config
@@ -31,8 +31,13 @@ class _NextTokenDataset(Dataset):
 
 
 class TextCompletionModel:
-    def __init__(self, base_model_checkpoint_path: str, tokenizer,
-                 lm_epochs: int = config.TEXT_COMPLETION_LM_EPOCHS, learning_rate: float = 1e-3):
+    def __init__(
+        self,
+        base_model_checkpoint_path: str,
+        tokenizer,
+        lm_epochs: int = config.TEXT_COMPLETION_LM_EPOCHS,
+        learning_rate: float = 1e-3,
+    ):
         checkpoint = load_checkpoint(base_model_checkpoint_path)
         model_name = checkpoint["model_name"]
         if model_name not in _SUPPORTED_BASE_MODELS:
@@ -69,7 +74,7 @@ class TextCompletionModel:
             outputs, _ = self.encoder(embedded)
             return outputs
 
-        embedded = embedded * (self.embedding_dim ** 0.5)
+        embedded = embedded * (self.embedding_dim**0.5)
         embedded = self.positional_encoding(embedded)
         padding_mask = input_ids == 0
         return self.encoder(embedded, src_key_padding_mask=padding_mask)
@@ -78,12 +83,19 @@ class TextCompletionModel:
         train_df = load_split("cv_pool")
         if len(train_df) > config.TEXT_COMPLETION_TRAIN_SUBSAMPLE_SIZE:
             train_df = train_df.sample(
-                n=config.TEXT_COMPLETION_TRAIN_SUBSAMPLE_SIZE, random_state=config.RANDOM_SEED
+                n=config.TEXT_COMPLETION_TRAIN_SUBSAMPLE_SIZE,
+                random_state=config.RANDOM_SEED,
             )
-        dataset = _NextTokenDataset(train_df["text"].tolist(), self.tokenizer, config.MAX_SEQUENCE_LENGTH)
+        dataset = _NextTokenDataset(
+            train_df["text"].tolist(), self.tokenizer, config.MAX_SEQUENCE_LENGTH
+        )
         loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
 
-        params = list(self.embedding.parameters()) + list(self.encoder.parameters()) + list(self.lm_head.parameters())
+        params = (
+            list(self.embedding.parameters())
+            + list(self.encoder.parameters())
+            + list(self.lm_head.parameters())
+        )
         optimizer = torch.optim.Adam(params, lr=learning_rate)
         criterion = nn.CrossEntropyLoss(ignore_index=0)
 
@@ -93,24 +105,35 @@ class TextCompletionModel:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 optimizer.zero_grad()
                 logits = self.lm_head(self._encode_sequence(inputs))
-                loss = criterion(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+                loss = criterion(
+                    logits.reshape(-1, logits.size(-1)), targets.reshape(-1)
+                )
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
-            print(f"[text_completion:{self.model_name}] lm epoch {epoch + 1}/{num_epochs} "
-                  f"loss={total_loss / len(loader):.4f}")
+            print(
+                f"[text_completion:{self.model_name}] lm epoch {epoch + 1}/{num_epochs} "
+                f"loss={total_loss / len(loader):.4f}"
+            )
 
-    def generate(self, prompt: str, max_new_tokens: int = 20, temperature: float = 1.0) -> str:
+    def generate(
+        self, prompt: str, max_new_tokens: int = 20, temperature: float = 1.0
+    ) -> str:
         unk_id = self.tokenizer.token_to_id["<unk>"]
         pad_id = self.tokenizer.token_to_id["<pad>"]
-        token_ids = [self.tokenizer.token_to_id.get(t, unk_id) for t in self.tokenizer.tokenize(prompt)]
+        token_ids = [
+            self.tokenizer.token_to_id.get(t, unk_id)
+            for t in self.tokenizer.tokenize(prompt)
+        ]
         if not token_ids:
             token_ids = [unk_id]
 
         with torch.no_grad():
             for _ in range(max_new_tokens):
-                context = token_ids[-config.MAX_SEQUENCE_LENGTH:]
-                input_ids = torch.tensor([context], dtype=torch.long, device=self.device)
+                context = token_ids[-config.MAX_SEQUENCE_LENGTH :]
+                input_ids = torch.tensor(
+                    [context], dtype=torch.long, device=self.device
+                )
                 next_logits = self.lm_head(self._encode_sequence(input_ids))[0, -1]
 
                 if temperature <= 0:
@@ -123,5 +146,7 @@ class TextCompletionModel:
                     break
                 token_ids.append(next_id)
 
-        generated_tokens = [self.tokenizer.id_to_token.get(i, "<unk>") for i in token_ids]
+        generated_tokens = [
+            self.tokenizer.id_to_token.get(i, "<unk>") for i in token_ids
+        ]
         return " ".join(generated_tokens)
