@@ -35,29 +35,29 @@ codemix-sentiment-analyzer/
 │   ├── raw/                 # Downloaded BanglishRev cache (git-ignored, multi-GB)
 │   └── processed/           # cv_pool.csv (k-fold CV pool) + test.csv (held-out) -- tracked
 ├── src/
-│   ├── config.py             # Central paths, constants, hyperparameters
-│   ├── data/                 # Dataset building, tokenizer, preprocessing
-│   ├── features/             # N-Gram/BoW/TF-IDF features + Word2Vec embeddings
-│   ├── models/                # ANN, RNN, LSTM, Attention, Transformer, BERT wrapper
-│   ├── generation/            # Small autoregressive text-completion demo
-│   ├── training/               # Training loops for classical / neural / BERT models
-│   ├── evaluation/             # Metrics computation + qualitative error analysis
-│   └── utils/                  # Seeding, I/O helpers
+│   ├── config.py            # Central paths, constants, hyperparameters
+│   ├── data/                # Dataset building, tokenizer, preprocessing
+│   ├── features/            # N-Gram/BoW/TF-IDF features + Word2Vec embeddings
+│   ├── models/              # ANN, RNN, LSTM, Attention, Transformer, BERT wrapper
+│   ├── generation/          # Small autoregressive text-completion demo
+│   ├── training/            # Training loops for classical / neural / BERT models
+│   ├── evaluation/          # Metrics computation + qualitative error analysis
+│   └── utils/               # Seeding, I/O helpers
 ├── app/
-│   ├── streamlit_app.py        # Entry point: theme, navigation between pages
-│   ├── app_lib.py               # Shared model loading, inference, styling helpers
-│   ├── app_pages/                # Analyzer page + Model Architecture explainer page
-│   └── diagrams.py               # Auto-generated per-model pipeline diagrams
+│   ├── streamlit_app.py     # Entry point: theme, navigation between pages
+│   ├── app_lib.py           # Shared model loading, inference, styling helpers
+│   ├── app_pages/           # Analyzer page + Model Architecture explainer page
+│   └── diagrams.py          # Auto-generated per-model pipeline diagrams
 ├── scripts/
-│   ├── build_dataset.py        # CLI entry point to assemble the dataset
-│   └── run_pipeline.py         # CLI entry point to train/evaluate everything
-├── results/                   # Saved metrics tables, charts, error analysis reports
-├── models_saved/              # Trained model checkpoints
+│   ├── build_dataset.py     # CLI entry point to assemble the dataset
+│   └── run_pipeline.py      # CLI entry point to train/evaluate everything
+├── results/                 # Saved metrics tables, charts, error analysis reports
+├── models_saved/            # Trained model checkpoints
 ├── docs/
-│   ├── idea/                    # Original project proposal PDFs
-│   └── report/                  # LaTeX source + compiled PDF academic report
-├── .streamlit/config.toml      # Light/dark/system theme
-├── tests/                     # Lightweight smoke tests
+│   ├── idea/                # Original project proposal PDFs
+│   └── report/              # LaTeX source + compiled PDF academic report
+├── .streamlit/config.toml   # Light/dark/system theme
+├── tests/                   # Lightweight smoke tests
 ├── requirements.txt
 ├── .gitignore
 └── README.md

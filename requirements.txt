@@ -27,6 +27,3 @@ pyyaml
 
 # Testing
 pytest
-
-# Note: text-only project -- no image/vision libraries (Pillow, opencv-python, etc.)
-# should be needed here.

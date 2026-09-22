@@ -8,21 +8,29 @@ from src import config
 from src.utils.io_utils import ensure_dir
 
 
-def collect_misclassified_examples(model_name: str, predictions_df, num_examples: int = 5):
-    wrong = predictions_df[predictions_df["true_label"] != predictions_df["predicted_label"]].copy()
+def collect_misclassified_examples(
+    model_name: str, predictions_df, num_examples: int = 5
+):
+    wrong = predictions_df[
+        predictions_df["true_label"] != predictions_df["predicted_label"]
+    ].copy()
     wrong["model"] = model_name
     if len(wrong) == 0:
         return wrong.assign(note=[])
 
     # Spread the sample across language conditions rather than taking the first N rows.
     per_language_quota = max(1, num_examples // max(len(wrong["language"].unique()), 1))
-    sampled = (
-        wrong.groupby("language", group_keys=False)
-        .apply(lambda g: g.sample(n=min(per_language_quota, len(g)), random_state=config.RANDOM_SEED))
+    sampled = wrong.groupby("language", group_keys=False).apply(
+        lambda g: g.sample(
+            n=min(per_language_quota, len(g)), random_state=config.RANDOM_SEED
+        )
     )
     if len(sampled) < num_examples:
         remaining = wrong.drop(sampled.index)
-        extra = remaining.sample(n=min(num_examples - len(sampled), len(remaining)), random_state=config.RANDOM_SEED)
+        extra = remaining.sample(
+            n=min(num_examples - len(sampled), len(remaining)),
+            random_state=config.RANDOM_SEED,
+        )
         sampled = pd.concat([sampled, extra])
     sampled = sampled.head(num_examples).copy()
 
@@ -51,7 +59,7 @@ def write_error_report(all_examples: dict, output_path: str) -> None:
             continue
         for _, row in examples_df.iterrows():
             lines.append(
-                f"- **[{row['language']}]** \"{row['text']}\"\n"
+                f'- **[{row["language"]}]** "{row["text"]}"\n'
                 f"  true=`{row['true_label']}`, predicted=`{row['predicted_label']}` -- {row['note']}"
             )
         lines.append("")
@@ -60,8 +68,8 @@ def write_error_report(all_examples: dict, output_path: str) -> None:
     if generation_samples:
         lines.append("## Text-Completion Bonus (Phase 9, qualitative only)\n")
         for sample in generation_samples:
-            lines.append(f"- **[{sample['model_name']}]** prompt=\"{sample['prompt']}\"")
-            lines.append(f"  -> \"{sample['completion']}\"")
+            lines.append(f'- **[{sample["model_name"]}]** prompt="{sample["prompt"]}"')
+            lines.append(f'  -> "{sample["completion"]}"')
         lines.append("")
 
     ensure_dir(Path(output_path).parent)
@@ -86,7 +94,11 @@ def collect_generation_samples(prompts: list):
             continue
         completion_model = TextCompletionModel(checkpoint_path, tokenizer)
         for prompt in prompts:
-            completion = completion_model.generate(prompt, max_new_tokens=15, temperature=0.8)
-            samples.append({"model_name": model_name, "prompt": prompt, "completion": completion})
+            completion = completion_model.generate(
+                prompt, max_new_tokens=15, temperature=0.8
+            )
+            samples.append(
+                {"model_name": model_name, "prompt": prompt, "completion": completion}
+            )
 
     return samples
