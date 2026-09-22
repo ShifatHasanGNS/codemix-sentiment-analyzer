@@ -7,8 +7,13 @@ from src import config
 from src.data.tokenizer import PAD_TOKEN
 
 
-def train_word2vec(tokenized_corpus: list, vector_size: int = 100,
-                    window: int = 5, min_count: int = 1, sg: int = 1):
+def train_word2vec(
+    tokenized_corpus: list,
+    vector_size: int = 100,
+    window: int = 5,
+    min_count: int = 1,
+    sg: int = 1,
+):
     return Word2Vec(
         sentences=tokenized_corpus,
         vector_size=vector_size,

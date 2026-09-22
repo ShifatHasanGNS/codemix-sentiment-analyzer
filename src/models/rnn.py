@@ -1,13 +1,19 @@
 # Vanilla RNN: classifies from the final hidden state.
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class RNNClassifier(nn.Module):
-    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int,
-                 num_classes: int = 3, pretrained_embeddings=None,
-                 freeze_embeddings: bool = False):
+    def __init__(
+        self,
+        vocab_size: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        num_classes: int = 3,
+        pretrained_embeddings=None,
+        freeze_embeddings: bool = False,
+    ):
         super().__init__()
         if pretrained_embeddings is not None:
             weight = torch.as_tensor(pretrained_embeddings, dtype=torch.float32)

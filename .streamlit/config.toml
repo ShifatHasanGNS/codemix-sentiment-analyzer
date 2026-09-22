@@ -21,7 +21,15 @@ headingFontWeights = [600, 600, 600, 600, 600, 600]
 linkUnderline = true
 # chartCategoricalColors is only valid at the top level, not per light/dark
 # mode -- shared across both (still reads fine against either background).
-chartCategoricalColors = ["#2563EB", "#EF4444", "#22C55E", "#F97316", "#8B5CF6", "#EAB308", "#71717A"]
+chartCategoricalColors = [
+    "#2563EB",
+    "#EF4444",
+    "#22C55E",
+    "#F97316",
+    "#8B5CF6",
+    "#EAB308",
+    "#71717A",
+]
 
 [theme.light]
 # A real accent (not a neutral zinc) so "selected"/"active" states -- pills,

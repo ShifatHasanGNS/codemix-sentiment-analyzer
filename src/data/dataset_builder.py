@@ -22,14 +22,41 @@ _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _ENGLISH_WORDS = None  # lazily-built cache; see _english_word_set()
 
 # Short English function words kept despite the length>=3 filter below.
-_SHORT_ENGLISH_WORDS = frozenset([
-    "a", "i", "am", "an", "as", "at", "be", "by", "do", "go", "he", "hi",
-    "if", "in", "is", "it", "me", "my", "no", "of", "ok", "on", "or", "so",
-    "to", "up", "us", "we",
-])
+_SHORT_ENGLISH_WORDS = frozenset(
+    [
+        "a",
+        "i",
+        "am",
+        "an",
+        "as",
+        "at",
+        "be",
+        "by",
+        "do",
+        "go",
+        "he",
+        "hi",
+        "if",
+        "in",
+        "is",
+        "it",
+        "me",
+        "my",
+        "no",
+        "of",
+        "ok",
+        "on",
+        "or",
+        "so",
+        "to",
+        "up",
+        "us",
+        "we",
+    ]
+)
 
 
-def download_banglishrev(cache_dir: str = None) -> str:
+def download_banglishrev(cache_dir: str | None = None) -> str:
     """Fetch BanglishRev's `reviews v1.json` by exact filename (never the image archives) and return its local path."""
     from huggingface_hub import hf_hub_download
 
@@ -76,11 +103,13 @@ def flatten_reviews(raw_data) -> pd.DataFrame:
             if rating not in config.RATING_TO_LABEL:
                 continue
 
-            rows.append({
-                "product_category": category,
-                "rating": rating,
-                "text": text.strip(),
-            })
+            rows.append(
+                {
+                    "product_category": category,
+                    "rating": rating,
+                    "text": text.strip(),
+                }
+            )
 
     return pd.DataFrame(rows, columns=["product_category", "rating", "text"])
 
@@ -90,7 +119,9 @@ def map_rating_to_label(rating: int) -> str:
     try:
         return config.RATING_TO_LABEL[int(rating)]
     except (KeyError, TypeError, ValueError):
-        raise ValueError(f"rating must be an int in {sorted(config.RATING_TO_LABEL)}, got {rating!r}")
+        raise ValueError(
+            f"rating must be an int in {sorted(config.RATING_TO_LABEL)}, got {rating!r}"
+        )
 
 
 def _english_word_set():
@@ -106,9 +137,9 @@ def _english_word_set():
                 "NLTK 'words' corpus not found. Run "
                 "`python -m nltk.downloader words` once, then retry."
             )
-        _ENGLISH_WORDS = frozenset(
-            w for w in all_words if len(w) >= 3
-        ) | (_SHORT_ENGLISH_WORDS & all_words)
+        _ENGLISH_WORDS = frozenset(w for w in all_words if len(w) >= 3) | (
+            _SHORT_ENGLISH_WORDS & all_words
+        )
     return _ENGLISH_WORDS
 
 
@@ -144,7 +175,9 @@ def detect_language_condition(text: str) -> str:
     if latin_ratio >= threshold:
         latin_tokens = [t.lower() for t, s in zip(tokens, scripts) if s == "latin"]
         english_words = _english_word_set()
-        english_ratio = sum(t in english_words for t in latin_tokens) / len(latin_tokens)
+        english_ratio = sum(t in english_words for t in latin_tokens) / len(
+            latin_tokens
+        )
         return "english" if english_ratio >= threshold else "banglish"
 
     return "code_switched"
@@ -166,14 +199,20 @@ def filter_familiar_categories(df: pd.DataFrame, allowed_categories) -> pd.DataF
 def clean_and_dedupe(df: pd.DataFrame) -> pd.DataFrame:
     """Strip control chars, drop too-short/duplicate/content-free (zero-alphabetic-token, e.g. mojibake) reviews."""
     df = df.copy()
-    df["text"] = df["text"].str.replace(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", regex=True).str.strip()
+    df["text"] = (
+        df["text"]
+        .str.replace(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", regex=True)
+        .str.strip()
+    )
     df = df[df["text"].str.len() >= config.MIN_REVIEW_LENGTH_CHARS]
     df = df[df["text"].apply(lambda t: len(_WORD_RE.findall(t)) > 0)]
     df = df.drop_duplicates(subset=["text"])
     return df.reset_index(drop=True)
 
 
-def subsample_balanced(df: pd.DataFrame, target_size: int, per_group_cap: int = None) -> pd.DataFrame:
+def subsample_balanced(
+    df: pd.DataFrame, target_size: int, per_group_cap: int | None = None
+) -> pd.DataFrame:
     """Seeded subsample to `target_size`, balanced by label first, then best-effort-redistributed across language conditions within each label."""
     labels = df["label"].unique()
     n_labels = max(len(labels), 1)
@@ -201,7 +240,9 @@ def subsample_balanced(df: pd.DataFrame, target_size: int, per_group_cap: int = 
         shortfall = label_quota - total
         if shortfall > 0 and remaining_pool:
             pool = pd.concat(remaining_pool)
-            extra = pool.sample(n=min(shortfall, len(pool)), random_state=config.RANDOM_SEED)
+            extra = pool.sample(
+                n=min(shortfall, len(pool)), random_state=config.RANDOM_SEED
+            )
             chosen_parts.append(extra)
 
         sampled_parts.append(pd.concat(chosen_parts))
@@ -210,7 +251,7 @@ def subsample_balanced(df: pd.DataFrame, target_size: int, per_group_cap: int = 
     return result.reset_index(drop=True)
 
 
-def assemble_dataset(cache_dir: str = None) -> pd.DataFrame:
+def assemble_dataset(cache_dir: str | None = None) -> pd.DataFrame:
     """Run the full collection pipeline and write data/raw/dataset.csv."""
     raw_path = download_banglishrev(cache_dir=cache_dir)
     df = flatten_reviews(raw_path)
@@ -233,42 +274,64 @@ def assemble_dataset(cache_dir: str = None) -> pd.DataFrame:
     return df
 
 
-def create_cv_splits(df: pd.DataFrame, n_folds: int = None, test_holdout: float = None):
+def create_cv_splits(
+    df: pd.DataFrame, n_folds: int | None = None, test_holdout: float | None = None
+):
     """Carve off a stratified held-out test set, then add a `fold` column (0..n_folds-1) to the rest; writes both to data/processed/."""
     from sklearn.model_selection import StratifiedKFold, train_test_split
 
     n_folds = n_folds or config.N_FOLDS
-    test_holdout = test_holdout if test_holdout is not None else config.TEST_HOLDOUT_SPLIT
+    test_holdout = (
+        test_holdout if test_holdout is not None else config.TEST_HOLDOUT_SPLIT
+    )
 
     strata = df["label"] + "_" + df["language"]
     try:
         cv_pool, test_df = train_test_split(
-            df, test_size=test_holdout, random_state=config.RANDOM_SEED, stratify=strata,
+            df,
+            test_size=test_holdout,
+            random_state=config.RANDOM_SEED,
+            stratify=strata,
         )
         fold_strata_source = "joint"
     except ValueError:
-        print("Warning: some (label, language) group too small to stratify jointly for "
-              "the test split; falling back to stratifying by label only.")
+        print(
+            "Warning: some (label, language) group too small to stratify jointly for "
+            "the test split; falling back to stratifying by label only."
+        )
         cv_pool, test_df = train_test_split(
-            df, test_size=test_holdout, random_state=config.RANDOM_SEED, stratify=df["label"],
+            df,
+            test_size=test_holdout,
+            random_state=config.RANDOM_SEED,
+            stratify=df["label"],
         )
         fold_strata_source = "label"
 
     cv_pool = cv_pool.reset_index(drop=True)
     fold_strata = (
-        cv_pool["label"] + "_" + cv_pool["language"] if fold_strata_source == "joint" else cv_pool["label"]
+        cv_pool["label"] + "_" + cv_pool["language"]
+        if fold_strata_source == "joint"
+        else cv_pool["label"]
     )
     try:
-        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=config.RANDOM_SEED)
+        skf = StratifiedKFold(
+            n_splits=n_folds, shuffle=True, random_state=config.RANDOM_SEED
+        )
         fold_of = pd.Series(index=cv_pool.index, dtype=int)
         for fold_idx, (_, val_indices) in enumerate(skf.split(cv_pool, fold_strata)):
             fold_of.iloc[val_indices] = fold_idx
     except ValueError:
-        print("Warning: some (label, language) group too small to stratify jointly for "
-              "k-fold assignment; falling back to stratifying by label only.")
-        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=config.RANDOM_SEED)
+        print(
+            "Warning: some (label, language) group too small to stratify jointly for "
+            "k-fold assignment; falling back to stratifying by label only."
+        )
+        skf = StratifiedKFold(
+            n_splits=n_folds, shuffle=True, random_state=config.RANDOM_SEED
+        )
         fold_of = pd.Series(index=cv_pool.index, dtype=int)
-        for fold_idx, (_, val_indices) in enumerate(skf.split(cv_pool, cv_pool["label"])):
+        for fold_idx, (_, val_indices) in enumerate(
+            skf.split(cv_pool, cv_pool["label"])
+        ):
             fold_of.iloc[val_indices] = fold_idx
     cv_pool["fold"] = fold_of.values
 
@@ -282,6 +345,14 @@ def create_cv_splits(df: pd.DataFrame, n_folds: int = None, test_holdout: float 
 def get_fold(cv_pool_df: pd.DataFrame, fold_index: int):
     """Split a fold-tagged CV pool (see create_cv_splits) into that fold's
     (train_df, val_df), by filtering the `fold` column."""
-    train_df = cv_pool_df[cv_pool_df["fold"] != fold_index].drop(columns=["fold"]).reset_index(drop=True)
-    val_df = cv_pool_df[cv_pool_df["fold"] == fold_index].drop(columns=["fold"]).reset_index(drop=True)
+    train_df = (
+        cv_pool_df[cv_pool_df["fold"] != fold_index]
+        .drop(columns=["fold"])
+        .reset_index(drop=True)
+    )
+    val_df = (
+        cv_pool_df[cv_pool_df["fold"] == fold_index]
+        .drop(columns=["fold"])
+        .reset_index(drop=True)
+    )
     return train_df, val_df
